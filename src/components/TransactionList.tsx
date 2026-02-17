@@ -479,12 +479,13 @@ export default function TransactionList() {
 
       {/* Edit Dialog */}
       <Dialog open={!!editTx} onOpenChange={() => setEditTx(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Modifier la transaction</DialogTitle>
           </DialogHeader>
           {editTx && (
             <TransactionForm
+              embedded
               editId={editTx.id}
               initialData={{
                 date_transaction: editTx.date_transaction,

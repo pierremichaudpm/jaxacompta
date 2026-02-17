@@ -40,6 +40,8 @@ interface Props {
   ocrConfidence?: number;
   onSaved?: () => void;
   editId?: number;
+  /** Hide the Card wrapper (when used inside a Dialog that already has a header) */
+  embedded?: boolean;
 }
 
 export default function TransactionForm({
@@ -47,6 +49,7 @@ export default function TransactionForm({
   ocrConfidence,
   onSaved,
   editId,
+  embedded,
 }: Props) {
   const [form, setForm] = useState<TransactionFormData>({
     date_transaction: new Date().toISOString().split("T")[0],
@@ -162,6 +165,264 @@ export default function TransactionForm({
         : true,
   );
 
+  const formContent = (
+    <form onSubmit={handleSubmit} className="space-y-4">
+      {/* Row 1: Date + Type */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="date">Date</Label>
+          <Input
+            id="date"
+            type="date"
+            value={form.date_transaction}
+            onChange={(e) => updateField("date_transaction", e.target.value)}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>Type</Label>
+          <Select
+            value={form.type}
+            onValueChange={(v) =>
+              updateField("type", v as TransactionFormData["type"])
+            }
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="dépense">Dépense</SelectItem>
+              <SelectItem value="revenu">Revenu</SelectItem>
+              <SelectItem value="transfert">Transfert</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Row 2: Catégorie + Projet */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Catégorie</Label>
+          <Select
+            value={form.categorie_id?.toString() || ""}
+            onValueChange={(v) => updateField("categorie_id", Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {filteredCategories.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Projet</Label>
+          <Select
+            value={form.projet_id?.toString() || ""}
+            onValueChange={(v) => updateField("projet_id", Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {projets.map((p) => (
+                <SelectItem key={p.id} value={p.id.toString()}>
+                  {p.code} — {p.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Description */}
+      <div className="space-y-1.5">
+        <Label htmlFor="description">Description</Label>
+        <Textarea
+          id="description"
+          value={form.description}
+          rows={2}
+          onChange={(e) => updateField("description", e.target.value)}
+          placeholder="Description de la transaction"
+        />
+      </div>
+
+      {/* Row 3: Contact + Compte */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Contact / Fournisseur</Label>
+          <Select
+            value={form.contact_id?.toString() || ""}
+            onValueChange={(v) => updateField("contact_id", Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {contacts.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label>Compte bancaire</Label>
+          <Select
+            value={form.compte_id?.toString() || ""}
+            onValueChange={(v) => updateField("compte_id", Number(v))}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Choisir..." />
+            </SelectTrigger>
+            <SelectContent>
+              {comptes.map((c) => (
+                <SelectItem key={c.id} value={c.id.toString()}>
+                  {c.nom}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      {/* Row 4: Paiement + Facture */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Mode de paiement</Label>
+          <Select
+            value={form.mode_paiement}
+            onValueChange={(v) => updateField("mode_paiement", v)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {MODES_PAIEMENT.map((m) => (
+                <SelectItem key={m} value={m}>
+                  {m}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="facture">N° Facture</Label>
+          <Input
+            id="facture"
+            value={form.numero_facture || ""}
+            onChange={(e) => updateField("numero_facture", e.target.value)}
+          />
+        </div>
+      </div>
+
+      {/* Montants — 2 cols mobile, 4 cols desktop */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Label className="text-sm font-semibold">Montants</Label>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="taxable"
+              checked={form.taxable}
+              onCheckedChange={(v) => updateField("taxable", v as boolean)}
+            />
+            <Label htmlFor="taxable" className="text-sm">
+              Taxable
+            </Label>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="ht" className="text-xs text-muted-foreground">
+              Montant HT
+            </Label>
+            <Input
+              id="ht"
+              type="number"
+              step="0.01"
+              value={form.montant_ht || ""}
+              onChange={(e) =>
+                updateField("montant_ht", Number(e.target.value))
+              }
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tps" className="text-xs text-muted-foreground">
+              TPS (5%)
+            </Label>
+            <Input
+              id="tps"
+              type="number"
+              step="0.01"
+              value={form.tps || ""}
+              onChange={(e) => updateField("tps", Number(e.target.value))}
+              disabled={!form.taxable}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="tvq" className="text-xs text-muted-foreground">
+              TVQ (9,975%)
+            </Label>
+            <Input
+              id="tvq"
+              type="number"
+              step="0.01"
+              value={form.tvq || ""}
+              onChange={(e) => updateField("tvq", Number(e.target.value))}
+              disabled={!form.taxable}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="ttc" className="text-xs text-muted-foreground">
+              Total TTC
+            </Label>
+            <Input
+              id="ttc"
+              type="number"
+              step="0.01"
+              value={form.total_ttc || ""}
+              className="font-bold"
+              readOnly
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* Notes */}
+      <div className="space-y-1.5">
+        <Label htmlFor="notes">Notes</Label>
+        <Textarea
+          id="notes"
+          value={form.notes || ""}
+          rows={2}
+          onChange={(e) => updateField("notes", e.target.value)}
+        />
+      </div>
+
+      <div className="flex items-center gap-3">
+        <Button type="submit" disabled={saving}>
+          <Save className="h-4 w-4 mr-2" />
+          {saving
+            ? "Enregistrement..."
+            : editId
+              ? "Mettre à jour"
+              : "Enregistrer"}
+        </Button>
+        {saved && (
+          <span className="text-sm text-green-600">Enregistré avec succès</span>
+        )}
+      </div>
+    </form>
+  );
+
+  if (embedded) {
+    return formContent;
+  }
+
   return (
     <Card>
       <CardHeader>
@@ -174,237 +435,7 @@ export default function TransactionForm({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="date">Date</Label>
-              <Input
-                id="date"
-                type="date"
-                value={form.date_transaction}
-                onChange={(e) =>
-                  updateField("date_transaction", e.target.value)
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Type</Label>
-              <Select
-                value={form.type}
-                onValueChange={(v) =>
-                  updateField("type", v as TransactionFormData["type"])
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="dépense">Dépense</SelectItem>
-                  <SelectItem value="revenu">Revenu</SelectItem>
-                  <SelectItem value="transfert">Transfert</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Catégorie</Label>
-              <Select
-                value={form.categorie_id?.toString() || ""}
-                onValueChange={(v) => updateField("categorie_id", Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {filteredCategories.map((c) => (
-                    <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Projet</Label>
-              <Select
-                value={form.projet_id?.toString() || ""}
-                onValueChange={(v) => updateField("projet_id", Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projets.map((p) => (
-                    <SelectItem key={p.id} value={p.id.toString()}>
-                      {p.code} — {p.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Textarea
-              id="description"
-              value={form.description}
-              rows={2}
-              onChange={(e) => updateField("description", e.target.value)}
-              placeholder="Description de la transaction"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="space-y-2">
-              <Label>Contact / Fournisseur</Label>
-              <Select
-                value={form.contact_id?.toString() || ""}
-                onValueChange={(v) => updateField("contact_id", Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {contacts.map((c) => (
-                    <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Compte bancaire</Label>
-              <Select
-                value={form.compte_id?.toString() || ""}
-                onValueChange={(v) => updateField("compte_id", Number(v))}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Choisir..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {comptes.map((c) => (
-                    <SelectItem key={c.id} value={c.id.toString()}>
-                      {c.nom}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Mode de paiement</Label>
-              <Select
-                value={form.mode_paiement}
-                onValueChange={(v) => updateField("mode_paiement", v)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MODES_PAIEMENT.map((m) => (
-                    <SelectItem key={m} value={m}>
-                      {m}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="facture">N° Facture</Label>
-              <Input
-                id="facture"
-                value={form.numero_facture || ""}
-                onChange={(e) => updateField("numero_facture", e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4 items-end">
-            <div className="space-y-2">
-              <Label htmlFor="ht">Montant HT</Label>
-              <Input
-                id="ht"
-                type="number"
-                step="0.01"
-                value={form.montant_ht || ""}
-                onChange={(e) =>
-                  updateField("montant_ht", Number(e.target.value))
-                }
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tps">TPS (5%)</Label>
-              <Input
-                id="tps"
-                type="number"
-                step="0.01"
-                value={form.tps || ""}
-                onChange={(e) => updateField("tps", Number(e.target.value))}
-                disabled={!form.taxable}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="tvq">TVQ (9.975%)</Label>
-              <Input
-                id="tvq"
-                type="number"
-                step="0.01"
-                value={form.tvq || ""}
-                onChange={(e) => updateField("tvq", Number(e.target.value))}
-                disabled={!form.taxable}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="ttc">Total TTC</Label>
-              <Input
-                id="ttc"
-                type="number"
-                step="0.01"
-                value={form.total_ttc || ""}
-                className="font-bold"
-                readOnly
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <Checkbox
-                id="taxable"
-                checked={form.taxable}
-                onCheckedChange={(v) => updateField("taxable", v as boolean)}
-              />
-              <Label htmlFor="taxable" className="text-sm">
-                Taxable
-              </Label>
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="notes">Notes</Label>
-            <Textarea
-              id="notes"
-              value={form.notes || ""}
-              rows={2}
-              onChange={(e) => updateField("notes", e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center gap-3">
-            <Button type="submit" disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving
-                ? "Enregistrement..."
-                : editId
-                  ? "Mettre à jour"
-                  : "Enregistrer"}
-            </Button>
-            {saved && (
-              <span className="text-sm text-green-600">
-                Enregistré avec succès
-              </span>
-            )}
-          </div>
-        </form>
-      </CardContent>
+      <CardContent>{formContent}</CardContent>
     </Card>
   );
 }

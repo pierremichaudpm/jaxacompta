@@ -104,7 +104,6 @@ export default function Factures() {
     new Date().toISOString().split("T")[0],
   );
   const [formTaxable, setFormTaxable] = useState(true);
-  const [formUseTVH, setFormUseTVH] = useState(false);
   const [formNotes, setFormNotes] = useState("");
   const [formLignes, setFormLignes] = useState<NewLigne[]>([
     { description: "", unite: "", cout_unitaire: "", isHeader: false },
@@ -233,15 +232,10 @@ export default function Factures() {
   };
 
   const sousTotal = computedLignes().reduce((sum, l) => sum + l.montant, 0);
-  const tpsAmount = formTaxable
-    ? formUseTVH
-      ? Math.round(sousTotal * 0.13 * 100) / 100
-      : Math.round(sousTotal * 0.05 * 100) / 100
+  const tpsAmount = formTaxable ? Math.round(sousTotal * 0.05 * 100) / 100 : 0;
+  const tvqAmount = formTaxable
+    ? Math.round(sousTotal * 0.09975 * 100) / 100
     : 0;
-  const tvqAmount =
-    formTaxable && !formUseTVH
-      ? Math.round(sousTotal * 0.09975 * 100) / 100
-      : 0;
   const totalTTC = Math.round((sousTotal + tpsAmount + tvqAmount) * 100) / 100;
 
   const handleDownloadPDF = (tx: Transaction) => {
@@ -330,7 +324,7 @@ export default function Factures() {
         tps: tpsAmount,
         tvq: tvqAmount,
         total_ttc: totalTTC,
-        use_tvh: formUseTVH,
+        use_tvh: false,
       });
       doc.save(`Facture_${formNumero}.pdf`);
 
@@ -597,14 +591,14 @@ export default function Factures() {
 
       {/* Create Invoice Dialog */}
       <Dialog open={showCreate} onOpenChange={setShowCreate}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Nouvelle facture</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Header fields */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
+            {/* Client + Projet */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>Client</Label>
                 <Select value={formClientId} onValueChange={setFormClientId}>
                   <SelectTrigger>
@@ -619,7 +613,7 @@ export default function Factures() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Projet</Label>
                 <Select
                   value={formProjetId}
@@ -639,7 +633,11 @@ export default function Factures() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
+            </div>
+
+            {/* N° Facture + Date */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>N° Facture</Label>
                 <div className="flex gap-1">
                   <Input
@@ -658,7 +656,7 @@ export default function Factures() {
                   </Button>
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label>Date</Label>
                 <Input
                   type="date"
@@ -668,8 +666,9 @@ export default function Factures() {
               </div>
             </div>
 
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="space-y-2">
+            {/* Compte + Tax options */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1.5">
                 <Label>Compte bancaire</Label>
                 <Select value={formCompteId} onValueChange={setFormCompteId}>
                   <SelectTrigger>
@@ -684,36 +683,127 @@ export default function Factures() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="flex items-center gap-2 pt-6">
-                <Checkbox
-                  id="taxable"
-                  checked={formTaxable}
-                  onCheckedChange={(v) => setFormTaxable(v as boolean)}
-                />
-                <Label htmlFor="taxable">Taxable</Label>
-              </div>
-              <div className="flex items-center gap-2 pt-6">
-                <Checkbox
-                  id="tvh"
-                  checked={formUseTVH}
-                  onCheckedChange={(v) => setFormUseTVH(v as boolean)}
-                  disabled={!formTaxable}
-                />
-                <Label htmlFor="tvh">TPS/TVH 13% (Ontario)</Label>
+              <div className="flex items-end pb-1">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="f-taxable"
+                    checked={formTaxable}
+                    onCheckedChange={(v) => setFormTaxable(v as boolean)}
+                  />
+                  <Label htmlFor="f-taxable">
+                    Taxable (TPS 5% + TVQ 9,975%)
+                  </Label>
+                </div>
               </div>
             </div>
 
             {/* Line items */}
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label className="text-base">Lignes de facturation</Label>
+                <Label className="text-sm font-semibold">
+                  Lignes de facturation
+                </Label>
                 <Button variant="outline" size="sm" onClick={addLigne}>
                   <Plus className="h-3 w-3 mr-1" />
-                  Ajouter ligne
+                  Ligne
                 </Button>
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
+              {/* Mobile: card-based line items */}
+              <div className="space-y-3 sm:hidden">
+                {formLignes.map((l, idx) => {
+                  const montant = l.isHeader
+                    ? 0
+                    : (parseFloat(l.unite) || 1) *
+                      (parseFloat(l.cout_unitaire) || 0);
+                  return (
+                    <div key={idx} className="border rounded-lg p-3 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Checkbox
+                            checked={l.isHeader}
+                            onCheckedChange={(v) =>
+                              updateLigne(idx, "isHeader", v as boolean)
+                            }
+                          />
+                          <span className="text-xs text-muted-foreground">
+                            {l.isHeader ? "En-tête" : `Ligne ${idx + 1}`}
+                          </span>
+                        </div>
+                        {formLignes.length > 1 && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-500"
+                            onClick={() => removeLigne(idx)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                      <Input
+                        value={l.description}
+                        onChange={(e) =>
+                          updateLigne(idx, "description", e.target.value)
+                        }
+                        placeholder={
+                          l.isHeader
+                            ? "Titre de section..."
+                            : "Description du service..."
+                        }
+                        className={l.isHeader ? "font-bold" : ""}
+                      />
+                      {!l.isHeader && (
+                        <div className="grid grid-cols-3 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Unités
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.25"
+                              value={l.unite}
+                              onChange={(e) =>
+                                updateLigne(idx, "unite", e.target.value)
+                              }
+                              placeholder="1"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Coût unit.
+                            </Label>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={l.cout_unitaire}
+                              onChange={(e) =>
+                                updateLigne(
+                                  idx,
+                                  "cout_unitaire",
+                                  e.target.value,
+                                )
+                              }
+                              placeholder="0.00"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">
+                              Montant
+                            </Label>
+                            <div className="h-9 flex items-center justify-end font-mono text-sm">
+                              {montant !== 0 ? fmt(montant) : "—"}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Desktop: table-based line items */}
+              <div className="border rounded-lg overflow-hidden hidden sm:block">
                 <Table>
                   <TableHeader>
                     <TableRow>
@@ -810,7 +900,7 @@ export default function Factures() {
 
             {/* Totals */}
             <div className="flex justify-end">
-              <div className="w-72 space-y-1 text-sm">
+              <div className="w-full sm:w-72 space-y-1 text-sm">
                 <div className="flex justify-between">
                   <span>Sous-total</span>
                   <span className="font-mono">{fmt(sousTotal)}</span>
@@ -818,15 +908,13 @@ export default function Factures() {
                 {formTaxable && (
                   <>
                     <div className="flex justify-between text-muted-foreground">
-                      <span>{formUseTVH ? "TPS/TVH (13%)" : "TPS (5%)"}</span>
+                      <span>TPS (5%)</span>
                       <span className="font-mono">{fmt(tpsAmount)}</span>
                     </div>
-                    {!formUseTVH && (
-                      <div className="flex justify-between text-muted-foreground">
-                        <span>TVQ (9,975%)</span>
-                        <span className="font-mono">{fmt(tvqAmount)}</span>
-                      </div>
-                    )}
+                    <div className="flex justify-between text-muted-foreground">
+                      <span>TVQ (9,975%)</span>
+                      <span className="font-mono">{fmt(tvqAmount)}</span>
+                    </div>
                   </>
                 )}
                 <div className="flex justify-between font-bold text-base border-t pt-1">
@@ -837,7 +925,7 @@ export default function Factures() {
             </div>
 
             {/* Notes */}
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <Label>Notes (optionnel)</Label>
               <Textarea
                 value={formNotes}
@@ -847,7 +935,7 @@ export default function Factures() {
             </div>
 
             {/* Actions */}
-            <div className="flex justify-end gap-2">
+            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
               <Button variant="outline" onClick={() => setShowCreate(false)}>
                 Annuler
               </Button>
@@ -867,9 +955,9 @@ export default function Factures() {
 
       {/* Contacts Management Dialog */}
       <Dialog open={showContacts} onOpenChange={setShowContacts}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[80vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Gérer les contacts clients</DialogTitle>
+            <DialogTitle>Gérer les contacts</DialogTitle>
           </DialogHeader>
 
           {editContact ? (
@@ -877,8 +965,8 @@ export default function Factures() {
               <p className="text-sm text-muted-foreground">
                 Modifier : <strong>{editContact.nom}</strong>
               </p>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
                   <Label>Nom</Label>
                   <Input
                     value={contactForm.nom}
@@ -887,31 +975,7 @@ export default function Factures() {
                     }
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Courriel</Label>
-                  <Input
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(e) =>
-                      setContactForm((p) => ({ ...p, email: e.target.value }))
-                    }
-                    placeholder="client@example.com"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Téléphone</Label>
-                  <Input
-                    value={contactForm.telephone}
-                    onChange={(e) =>
-                      setContactForm((p) => ({
-                        ...p,
-                        telephone: e.target.value,
-                      }))
-                    }
-                    placeholder="514-..."
-                  />
-                </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>Type</Label>
                   <Select
                     value={contactForm.type}
@@ -929,7 +993,31 @@ export default function Factures() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="col-span-2 space-y-2">
+                <div className="space-y-1.5">
+                  <Label>Courriel</Label>
+                  <Input
+                    type="email"
+                    value={contactForm.email}
+                    onChange={(e) =>
+                      setContactForm((p) => ({ ...p, email: e.target.value }))
+                    }
+                    placeholder="client@example.com"
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Téléphone</Label>
+                  <Input
+                    value={contactForm.telephone}
+                    onChange={(e) =>
+                      setContactForm((p) => ({
+                        ...p,
+                        telephone: e.target.value,
+                      }))
+                    }
+                    placeholder="514-..."
+                  />
+                </div>
+                <div className="sm:col-span-2 space-y-1.5">
                   <Label>Adresse</Label>
                   <Textarea
                     value={contactForm.adresse}
@@ -943,7 +1031,7 @@ export default function Factures() {
                     placeholder="357 rue des Merles, Boucherville, Qc J4B 5Y5"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>N° TPS</Label>
                   <Input
                     value={contactForm.numero_tps}
@@ -955,7 +1043,7 @@ export default function Factures() {
                     }
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   <Label>N° TVQ</Label>
                   <Input
                     value={contactForm.numero_tvq}
@@ -968,7 +1056,7 @@ export default function Factures() {
                   />
                 </div>
               </div>
-              <div className="flex justify-end gap-2">
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
                 <Button variant="outline" onClick={() => setEditContact(null)}>
                   Annuler
                 </Button>
@@ -976,49 +1064,51 @@ export default function Factures() {
               </div>
             </div>
           ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nom</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Courriel</TableHead>
-                  <TableHead>Téléphone</TableHead>
-                  <TableHead>Adresse</TableHead>
-                  <TableHead></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {allContacts.map((c) => (
-                  <TableRow key={c.id}>
-                    <TableCell className="font-medium">{c.nom}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline">{c.type}</Badge>
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {c.email || (
-                        <span className="text-muted-foreground italic">—</span>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-sm">
-                      {c.telephone || "—"}
-                    </TableCell>
-                    <TableCell className="text-sm max-w-[200px] truncate">
-                      {c.adresse || "—"}
-                    </TableCell>
-                    <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => startEditContact(c)}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+            <div className="space-y-2">
+              {allContacts.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-start justify-between gap-3 border rounded-lg p-3"
+                >
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-medium">{c.nom}</span>
+                      <Badge variant="outline" className="text-xs">
+                        {c.type}
+                      </Badge>
+                    </div>
+                    {c.email && (
+                      <p className="text-sm text-muted-foreground truncate">
+                        {c.email}
+                      </p>
+                    )}
+                    {c.telephone && (
+                      <p className="text-sm text-muted-foreground">
+                        {c.telephone}
+                      </p>
+                    )}
+                    {c.adresse && (
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.adresse}
+                      </p>
+                    )}
+                    {!c.email && !c.telephone && !c.adresse && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Aucune info de contact
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 shrink-0"
+                    onClick={() => startEditContact(c)}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              ))}
+            </div>
           )}
         </DialogContent>
       </Dialog>

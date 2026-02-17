@@ -12,6 +12,7 @@ import Rapports from "@/components/Rapports";
 import Factures from "@/components/Factures";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import logoWhite from "@/assets/logo-white.png";
 import {
   LayoutDashboard,
   Camera,
@@ -89,7 +90,7 @@ export default function App() {
                 <Menu className="h-5 w-5" />
               )}
             </button>
-            <h1 className="font-bold text-lg">JAXA Compta</h1>
+            <img src={logoWhite} alt="JAXA Production" className="h-8" />
           </div>
           <nav className="hidden md:flex items-center gap-1">
             {NAV_ITEMS.map((item) => (
