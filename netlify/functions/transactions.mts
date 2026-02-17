@@ -17,6 +17,18 @@ export default async (req: Request, _context: Context) => {
     const search = url.searchParams.get("q");
     const limit = parseInt(url.searchParams.get("limit") || "50");
     const offset = parseInt(url.searchParams.get("offset") || "0");
+    const sortParam = url.searchParams.get("sort") || "date_transaction";
+    const dirParam = url.searchParams.get("dir") === "asc" ? "ASC" : "DESC";
+
+    // Whitelist sort columns to prevent SQL injection
+    const SORT_COLUMNS: Record<string, string> = {
+      date_transaction: "t.date_transaction",
+      total_ttc: "t.total_ttc",
+      projet_code: "p.code",
+      categorie_nom: "c.nom",
+      description: "t.description",
+    };
+    const sortCol = SORT_COLUMNS[sortParam] || "t.date_transaction";
 
     // Build dynamic query with sql.query()
     const conditions: string[] = [];
@@ -69,7 +81,7 @@ export default async (req: Request, _context: Context) => {
        LEFT JOIN contacts co ON t.contact_id = co.id
        LEFT JOIN comptes_bancaires cb ON t.compte_id = cb.id
        ${where}
-       ORDER BY t.date_transaction DESC
+       ORDER BY ${sortCol} ${dirParam}
        LIMIT $${idx++} OFFSET $${idx++}`,
       [...params, limit, offset],
     );
