@@ -16,13 +16,13 @@ export default async (req: Request) => {
 
   const soldes = await sql`
     SELECT cb.code, cb.nom, cb.institution,
-      cb.solde_initial
-      + COALESCE(SUM(CASE WHEN t.type = 'revenu' THEN t.total_ttc ELSE 0 END), 0)
-      - COALESCE(SUM(CASE WHEN t.type = 'dépense' THEN t.total_ttc ELSE 0 END), 0)
+      COALESCE(cb.solde_reel, cb.solde_initial)
+      + COALESCE(SUM(CASE WHEN t.type = 'revenu' AND t.date_transaction > COALESCE(cb.date_solde_reel, '1900-01-01') THEN t.total_ttc ELSE 0 END), 0)
+      - COALESCE(SUM(CASE WHEN t.type = 'dépense' AND t.date_transaction > COALESCE(cb.date_solde_reel, '1900-01-01') THEN t.total_ttc ELSE 0 END), 0)
       as solde_actuel
     FROM comptes_bancaires cb
     LEFT JOIN transactions t ON t.compte_id = cb.id
-    GROUP BY cb.id, cb.code, cb.nom, cb.institution, cb.solde_initial
+    GROUP BY cb.id, cb.code, cb.nom, cb.institution, cb.solde_initial, cb.solde_reel, cb.date_solde_reel
   `;
 
   const evolution = await sql`
