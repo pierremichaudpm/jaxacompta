@@ -27,6 +27,27 @@ export default async (req: Request, _context: Context) => {
     });
   }
 
+  if (req.method === "PUT") {
+    const data = await req.json();
+    if (!data.id) {
+      return new Response(JSON.stringify({ error: "ID requis" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    const result = await sql`
+      UPDATE contacts SET
+        nom = ${data.nom}, type = ${data.type}, email = ${data.email},
+        telephone = ${data.telephone}, adresse = ${data.adresse},
+        numero_tps = ${data.numero_tps}, numero_tvq = ${data.numero_tvq}
+      WHERE id = ${data.id}
+      RETURNING *
+    `;
+    return new Response(JSON.stringify(result[0]), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   return new Response("Method not allowed", { status: 405 });
 };
 
