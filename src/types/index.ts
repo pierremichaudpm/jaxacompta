@@ -1,7 +1,7 @@
 export interface Category {
   id: number;
   nom: string;
-  type: 'dépense' | 'revenu' | 'neutre';
+  type: "dépense" | "revenu" | "neutre";
 }
 
 export interface Projet {
@@ -20,9 +20,20 @@ export interface Projet {
 export interface Contact {
   id: number;
   nom: string;
-  type: 'client' | 'fournisseur' | 'les deux';
+  type: "client" | "fournisseur" | "les deux";
   email: string | null;
   telephone: string | null;
+  adresse: string | null;
+  numero_tps: string | null;
+  numero_tvq: string | null;
+}
+
+export interface LigneFacture {
+  description: string;
+  unite: number | null;
+  cout_unitaire: number | null;
+  montant: number;
+  isHeader?: boolean;
 }
 
 export interface CompteBancaire {
@@ -37,7 +48,7 @@ export interface CompteBancaire {
 export interface Transaction {
   id: number;
   date_transaction: string;
-  type: 'dépense' | 'revenu' | 'transfert';
+  type: "dépense" | "revenu" | "transfert";
   numero: string | null;
   description: string | null;
   categorie_id: number | null;
@@ -59,17 +70,21 @@ export interface Transaction {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  lignes_facture: string | null;
   // Joined fields
   categorie_nom?: string;
   projet_code?: string;
   projet_nom?: string;
   contact_nom?: string;
+  contact_email?: string;
+  contact_telephone?: string;
+  contact_adresse?: string;
   compte_nom?: string;
 }
 
 export interface TransactionFormData {
   date_transaction: string;
-  type: 'dépense' | 'revenu' | 'transfert';
+  type: "dépense" | "revenu" | "transfert";
   numero?: string;
   description: string;
   categorie_id: number | null;

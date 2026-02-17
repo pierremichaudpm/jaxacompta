@@ -34,10 +34,18 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  FileText,
 } from "lucide-react";
 import { api } from "@/lib/api";
-import type { Transaction, Category, Projet, CompteBancaire } from "@/types";
+import type {
+  Transaction,
+  Category,
+  Projet,
+  CompteBancaire,
+  LigneFacture,
+} from "@/types";
 import TransactionForm from "./TransactionForm";
+import { generateFacturePDF } from "@/lib/generateFacturePDF";
 import * as XLSX from "xlsx";
 
 const fmt = (n: number) =>
@@ -150,6 +158,35 @@ export default function TransactionList() {
     if (!confirm("Supprimer cette transaction ?")) return;
     await api.delete(`/api/transactions?id=${id}`);
     fetchData();
+  };
+
+  const handleDownloadInvoice = (tx: Transaction) => {
+    const lignes: LigneFacture[] = tx.lignes_facture
+      ? JSON.parse(tx.lignes_facture)
+      : [
+          {
+            description: tx.description || "Services",
+            unite: 1,
+            cout_unitaire: Number(tx.montant_ht) || 0,
+            montant: Number(tx.montant_ht) || Number(tx.total_ttc),
+          },
+        ];
+    const doc = generateFacturePDF({
+      numero_facture: tx.numero_facture || `JAXA-${tx.id}`,
+      date_facture: tx.date_transaction,
+      client_nom: tx.contact_nom || "Client",
+      client_adresse: tx.contact_adresse || null,
+      client_telephone: tx.contact_telephone || null,
+      projet_nom: tx.projet_nom || null,
+      lignes,
+      sous_total:
+        Number(tx.montant_ht) ||
+        Number(tx.total_ttc) - Number(tx.tps) - Number(tx.tvq),
+      tps: Number(tx.tps),
+      tvq: Number(tx.tvq),
+      total_ttc: Number(tx.total_ttc),
+    });
+    doc.save(`Facture_${tx.numero_facture || tx.id}.pdf`);
   };
 
   const exportExcel = () => {
@@ -375,6 +412,17 @@ export default function TransactionList() {
                       <TableCell className="text-sm">{tx.compte_nom}</TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          {tx.type === "revenu" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-blue-600"
+                              title="Télécharger facture PDF"
+                              onClick={() => handleDownloadInvoice(tx)}
+                            >
+                              <FileText className="h-3 w-3" />
+                            </Button>
+                          )}
                           <Button
                             variant="ghost"
                             size="icon"

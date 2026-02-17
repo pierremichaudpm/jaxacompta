@@ -9,6 +9,7 @@ import ImportCSV from "@/components/ImportCSV";
 import TransactionList from "@/components/TransactionList";
 import ProjetList from "@/components/ProjetList";
 import Rapports from "@/components/Rapports";
+import Factures from "@/components/Factures";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -20,12 +21,19 @@ import {
   List,
   FolderOpen,
   FileText,
+  Receipt,
   LogOut,
   Menu,
   X,
 } from "lucide-react";
 
-type Page = "dashboard" | "saisie" | "transactions" | "projets" | "rapports";
+type Page =
+  | "dashboard"
+  | "saisie"
+  | "transactions"
+  | "factures"
+  | "projets"
+  | "rapports";
 
 const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
   {
@@ -38,6 +46,11 @@ const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
     key: "transactions",
     label: "Transactions",
     icon: <List className="h-4 w-4" />,
+  },
+  {
+    key: "factures",
+    label: "Factures",
+    icon: <Receipt className="h-4 w-4" />,
   },
   {
     key: "projets",
@@ -167,6 +180,7 @@ export default function App() {
         )}
 
         {page === "transactions" && <TransactionList />}
+        {page === "factures" && <Factures />}
         {page === "projets" && <ProjetList />}
         {page === "rapports" && <Rapports />}
       </main>

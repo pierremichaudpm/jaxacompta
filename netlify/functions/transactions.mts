@@ -74,7 +74,9 @@ export default async (req: Request, _context: Context) => {
 
     const rows = await sql.query(
       `SELECT t.*, c.nom as categorie_nom, p.code as projet_code,
-              p.nom as projet_nom, co.nom as contact_nom, cb.nom as compte_nom
+              p.nom as projet_nom, co.nom as contact_nom,
+              co.email as contact_email, co.telephone as contact_telephone,
+              co.adresse as contact_adresse, cb.nom as compte_nom
        FROM transactions t
        LEFT JOIN categories c ON t.categorie_id = c.id
        LEFT JOIN projets p ON t.projet_id = p.id
