@@ -1,0 +1,23 @@
+INSERT INTO contacts (nom, type) VALUES
+  ('Cari St Laurent', 'client'),
+  ('Excellence industrielle', 'client'),
+  ('Orlade Amérique du Nord', 'client'),
+  ('Groupe Tonic', 'client'),
+  ('Couleur.tv', 'client'),
+  ('Aquamédias', 'client'),
+  ('JAXA – Whispering Forest', 'client'),
+  ('Pierre Michaud', 'fournisseur'),
+  ('Virginie Jaffredo', 'les deux'),
+  ('Jules Michaud', 'fournisseur'),
+  ('Josée Mongeau', 'fournisseur'),
+  ('Isotone Studio', 'fournisseur'),
+  ('Bar Rubinstein', 'fournisseur'),
+  ('Google', 'fournisseur'),
+  ('LGCPA', 'fournisseur'),
+  ('Hugo Fournier', 'fournisseur'),
+  ('Hubblo', 'fournisseur'),
+  ('Numix', 'fournisseur'),
+  ('La Piscine', 'fournisseur'),
+  ('Consors', 'fournisseur'),
+  ('Mastercard', 'fournisseur')
+ON CONFLICT DO NOTHING;
