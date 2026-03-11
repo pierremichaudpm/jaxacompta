@@ -124,17 +124,38 @@ export default async (req: Request, _context: Context) => {
       });
     }
 
-    // Update invoice-specific fields
-    const result = await sql`
-      UPDATE transactions SET
-        statut_facture = ${data.statut_facture},
-        date_paiement = ${data.date_paiement || null},
-        numero_facture = ${data.numero_facture || null},
-        lignes_facture = ${data.lignes_facture || null},
-        updated_at = NOW()
-      WHERE id = ${data.id}
-      RETURNING *
-    `;
+    // Full edit or status-only update
+    const isFullEdit = data.montant_ht !== undefined;
+    const result = isFullEdit
+      ? await sql`
+        UPDATE transactions SET
+          date_transaction = ${data.date_transaction},
+          description = ${data.description},
+          projet_id = ${data.projet_id},
+          contact_id = ${data.contact_id},
+          compte_id = ${data.compte_id},
+          montant_ht = ${data.montant_ht},
+          tps = ${data.tps},
+          tvq = ${data.tvq},
+          total_ttc = ${data.total_ttc},
+          taxable = ${data.taxable !== false},
+          numero_facture = ${data.numero_facture || null},
+          lignes_facture = ${data.lignes_facture || null},
+          branding = ${data.branding || 'jaxa'},
+          updated_at = NOW()
+        WHERE id = ${data.id}
+        RETURNING *
+      `
+      : await sql`
+        UPDATE transactions SET
+          statut_facture = ${data.statut_facture},
+          date_paiement = ${data.date_paiement || null},
+          numero_facture = ${data.numero_facture || null},
+          lignes_facture = ${data.lignes_facture || null},
+          updated_at = NOW()
+        WHERE id = ${data.id}
+        RETURNING *
+      `;
 
     return new Response(JSON.stringify(result[0]), {
       headers: { "Content-Type": "application/json" },

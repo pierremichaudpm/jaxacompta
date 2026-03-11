@@ -109,6 +109,7 @@ export default function Factures() {
     { description: "", unite: "", cout_unitaire: "", isHeader: false },
   ]);
   const [formBranding, setFormBranding] = useState<"jaxa" | "micho">("jaxa");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
   // Contact editing state
@@ -290,6 +291,54 @@ export default function Factures() {
     fetchData();
   };
 
+  const startEdit = (tx: Transaction) => {
+    setEditingId(tx.id);
+    setFormClientId(tx.contact_id ? tx.contact_id.toString() : "");
+    setFormProjetId(tx.projet_id ? tx.projet_id.toString() : "");
+    setFormCompteId(tx.compte_id ? tx.compte_id.toString() : "1");
+    setFormNumero(tx.numero_facture || "");
+    setFormDate(tx.date_transaction?.split("T")[0] || new Date().toISOString().split("T")[0]);
+    setFormTaxable(tx.taxable !== false);
+    setFormNotes(tx.notes || "");
+    setFormBranding((tx.branding as "jaxa" | "micho") || "jaxa");
+    if (tx.lignes_facture) {
+      try {
+        const lignes: LigneFacture[] = JSON.parse(tx.lignes_facture);
+        setFormLignes(
+          lignes.map((l) => ({
+            description: l.description || "",
+            unite: l.unite != null ? String(l.unite) : "",
+            cout_unitaire: l.cout_unitaire != null ? String(l.cout_unitaire) : "",
+            isHeader: l.isHeader || false,
+          })),
+        );
+      } catch {
+        setFormLignes([
+          { description: tx.description || "", unite: "1", cout_unitaire: String(Number(tx.montant_ht) || 0), isHeader: false },
+        ]);
+      }
+    } else {
+      setFormLignes([
+        { description: tx.description || "", unite: "1", cout_unitaire: String(Number(tx.montant_ht) || 0), isHeader: false },
+      ]);
+    }
+    setShowCreate(true);
+  };
+
+  const resetForm = () => {
+    setShowCreate(false);
+    setEditingId(null);
+    setFormLignes([{ description: "", unite: "", cout_unitaire: "", isHeader: false }]);
+    setFormNumero("");
+    setFormNotes("");
+    setFormBranding("jaxa");
+    setFormClientId("");
+    setFormProjetId("");
+    setFormCompteId("1");
+    setFormTaxable(true);
+    setFormDate(new Date().toISOString().split("T")[0]);
+  };
+
   const handleCreate = async () => {
     setSaving(true);
     try {
@@ -297,7 +346,7 @@ export default function Factures() {
       const client = contacts.find((c) => c.id === Number(formClientId));
       const projet = projets.find((p) => p.id === Number(formProjetId));
 
-      const result = await api.post<Transaction>("/api/factures", {
+      const payload = {
         date_transaction: formDate,
         description: `Facture ${formNumero} — ${client?.nom || ""}`,
         categorie_id: 14,
@@ -310,11 +359,19 @@ export default function Factures() {
         tvq: tvqAmount,
         total_ttc: totalTTC,
         taxable: formTaxable,
-        statut_facture: "Envoyée",
         numero_facture: formNumero,
         lignes_facture: JSON.stringify(lignes),
         branding: formBranding,
-      });
+      };
+
+      if (editingId) {
+        await api.put("/api/factures", { id: editingId, ...payload });
+      } else {
+        await api.post<Transaction>("/api/factures", {
+          ...payload,
+          statut_facture: "Envoyée",
+        });
+      }
 
       // Generate and download PDF
       const doc = generateFacturePDF({
@@ -334,14 +391,7 @@ export default function Factures() {
       });
       doc.save(`Facture_${formNumero}.pdf`);
 
-      // Reset form
-      setShowCreate(false);
-      setFormLignes([
-        { description: "", unite: "", cout_unitaire: "", isHeader: false },
-      ]);
-      setFormNumero("");
-      setFormNotes("");
-      setFormBranding("jaxa");
+      resetForm();
       fetchData();
     } finally {
       setSaving(false);
@@ -446,6 +496,7 @@ export default function Factures() {
               </Button>
               <Button
                 onClick={() => {
+                  resetForm();
                   setShowCreate(true);
                 }}
               >
@@ -525,6 +576,15 @@ export default function Factures() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            title="Modifier"
+                            onClick={() => startEdit(tx)}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
                           {tx.numero_facture && (
                             <Button
                               variant="ghost"
@@ -597,10 +657,10 @@ export default function Factures() {
       </Card>
 
       {/* Create Invoice Dialog */}
-      <Dialog open={showCreate} onOpenChange={setShowCreate}>
+      <Dialog open={showCreate} onOpenChange={(open) => { if (!open) resetForm(); }}>
         <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Nouvelle facture</DialogTitle>
+            <DialogTitle>{editingId ? "Modifier la facture" : "Nouvelle facture"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Client + Projet */}
@@ -955,7 +1015,7 @@ export default function Factures() {
 
             {/* Actions */}
             <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Button variant="outline" onClick={() => setShowCreate(false)}>
+              <Button variant="outline" onClick={resetForm}>
                 Annuler
               </Button>
               <Button
@@ -965,7 +1025,7 @@ export default function Factures() {
                 }
               >
                 <Download className="h-4 w-4 mr-2" />
-                {saving ? "Enregistrement..." : "Enregistrer + PDF"}
+                {saving ? "Enregistrement..." : editingId ? "Modifier + PDF" : "Enregistrer + PDF"}
               </Button>
             </div>
           </div>
