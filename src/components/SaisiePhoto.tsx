@@ -1,14 +1,16 @@
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Camera, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { OcrResult, TransactionFormData } from '@/types';
-import TransactionForm from './TransactionForm';
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Camera, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import type { OcrResult, TransactionFormData } from "@/types";
+import TransactionForm from "./TransactionForm";
 
 export default function SaisiePhoto() {
   const [preview, setPreview] = useState<string | null>(null);
-  const [ocrData, setOcrData] = useState<Partial<TransactionFormData> | null>(null);
+  const [ocrData, setOcrData] = useState<Partial<TransactionFormData> | null>(
+    null,
+  );
   const [ocrConfidence, setOcrConfidence] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,13 +25,16 @@ export default function SaisiePhoto() {
       const dataUrl = reader.result as string;
       setPreview(dataUrl);
 
-      const base64 = dataUrl.split(',')[1];
+      const base64 = dataUrl.split(",")[1];
       const mimeType = file.type;
 
       setLoading(true);
       setError(null);
       try {
-        const result = await api.post<OcrResult>('/api/ocr', { image: base64, mimeType });
+        const result = await api.post<OcrResult>("/api/ocr", {
+          image: base64,
+          mimeType,
+        });
         setOcrData({
           date_transaction: result.date,
           description: `${result.fournisseur} — ${result.description}`,
@@ -42,7 +47,7 @@ export default function SaisiePhoto() {
           taxable: result.tps > 0 || result.tvq > 0,
           ocr_source: true,
           ocr_confiance: result.confiance,
-          type: 'dépense',
+          type: "dépense",
         });
         setOcrConfidence(result.confiance);
       } catch (err) {
@@ -59,7 +64,7 @@ export default function SaisiePhoto() {
     setOcrData(null);
     setOcrConfidence(undefined);
     setError(null);
-    if (inputRef.current) inputRef.current.value = '';
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
@@ -82,18 +87,30 @@ export default function SaisiePhoto() {
               className="hidden"
               id="camera-input"
             />
-            <div className="flex gap-3">
-              <Button onClick={() => inputRef.current?.click()} disabled={loading}>
+            <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+              <Button
+                onClick={() => inputRef.current?.click()}
+                disabled={loading}
+                className="w-full sm:w-auto"
+              >
                 <Camera className="h-4 w-4 mr-2" />
                 Prendre une photo
               </Button>
-              <Button variant="outline" onClick={() => {
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = 'image/*';
-                input.onchange = (ev) => handleCapture(ev as unknown as React.ChangeEvent<HTMLInputElement>);
-                input.click();
-              }} disabled={loading}>
+              <Button
+                variant="outline"
+                className="w-full sm:w-auto"
+                onClick={() => {
+                  const input = document.createElement("input");
+                  input.type = "file";
+                  input.accept = "image/*";
+                  input.onchange = (ev) =>
+                    handleCapture(
+                      ev as unknown as React.ChangeEvent<HTMLInputElement>,
+                    );
+                  input.click();
+                }}
+                disabled={loading}
+              >
                 Choisir depuis la galerie
               </Button>
             </div>
@@ -106,7 +123,11 @@ export default function SaisiePhoto() {
             )}
             {error && <p className="text-sm text-red-600">{error}</p>}
             {preview && (
-              <img src={preview} alt="Reçu" className="max-w-sm rounded border" />
+              <img
+                src={preview}
+                alt="Reçu"
+                className="max-w-full sm:max-w-sm rounded border"
+              />
             )}
           </CardContent>
         </Card>
@@ -115,10 +136,18 @@ export default function SaisiePhoto() {
       {ocrData && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={reset}>Scanner un autre reçu</Button>
-            {preview && <img src={preview} alt="Reçu" className="h-16 rounded border" />}
+            <Button variant="outline" onClick={reset}>
+              Scanner un autre reçu
+            </Button>
+            {preview && (
+              <img src={preview} alt="Reçu" className="h-16 rounded border" />
+            )}
           </div>
-          <TransactionForm initialData={ocrData} ocrConfidence={ocrConfidence} onSaved={reset} />
+          <TransactionForm
+            initialData={ocrData}
+            ocrConfidence={ocrConfidence}
+            onSaved={reset}
+          />
         </div>
       )}
     </div>

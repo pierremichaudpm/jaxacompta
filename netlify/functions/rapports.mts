@@ -58,11 +58,13 @@ export default async (req: Request) => {
 
   if (type === "trimestriel-taxes") {
     const trimestre = url.searchParams.get("trimestre") || "Q1";
+    const anneeNum = Number(annee);
+    // JAXA fiscal quarters: T1=Feb-Apr, T2=May-Jul, T3=Aug-Oct, T4=Nov-Jan(+1)
     const trimestreMap: Record<string, [string, string]> = {
-      Q1: [`${annee}-01-01`, `${annee}-03-31`],
-      Q2: [`${annee}-04-01`, `${annee}-06-30`],
-      Q3: [`${annee}-07-01`, `${annee}-09-30`],
-      Q4: [`${annee}-10-01`, `${annee}-12-31`],
+      Q1: [`${annee}-02-01`, `${annee}-04-30`],
+      Q2: [`${annee}-05-01`, `${annee}-07-31`],
+      Q3: [`${annee}-08-01`, `${annee}-10-31`],
+      Q4: [`${annee}-11-01`, `${anneeNum + 1}-01-31`],
     };
     const [debut, fin] = trimestreMap[trimestre] || trimestreMap.Q1;
 

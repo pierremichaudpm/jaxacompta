@@ -108,6 +108,7 @@ export default function Factures() {
   const [formLignes, setFormLignes] = useState<NewLigne[]>([
     { description: "", unite: "", cout_unitaire: "", isHeader: false },
   ]);
+  const [formBranding, setFormBranding] = useState<"jaxa" | "micho">("jaxa");
   const [saving, setSaving] = useState(false);
 
   // Contact editing state
@@ -167,13 +168,15 @@ export default function Factures() {
 
   const handleSendEmail = (tx: Transaction) => {
     const email = tx.contact_email || "";
+    const isMicho = tx.branding === "micho";
+    const sender = isMicho ? "Studio Micho (par Jaxa Production inc.)" : "JAXA Production inc.";
     const subject = encodeURIComponent(
-      `Facture ${tx.numero_facture || ""} — JAXA Production inc.`,
+      `Facture ${tx.numero_facture || ""} — ${sender}`,
     );
     const body = encodeURIComponent(
       `Bonjour,\n\nVeuillez trouver ci-joint la facture ${tx.numero_facture || ""} d'un montant de ${fmt(Number(tx.total_ttc))}.\n\n` +
         `Conditions : Montant payable en 30 jours.\n\n` +
-        `N'hésitez pas à nous contacter pour toute question.\n\nCordialement,\nJAXA Production inc.\nvirginiejaffredo@jaxa.ca\n514-578-9989`,
+        `N'hésitez pas à nous contacter pour toute question.\n\nCordialement,\n${sender}\nvirginiejaffredo@jaxa.ca\n514-578-9989`,
     );
     window.open(`mailto:${email}?subject=${subject}&body=${body}`, "_self");
   };
@@ -268,6 +271,7 @@ export default function Factures() {
         Number(tx.tvq) === 0 &&
         Number(tx.tps) > 0 &&
         Number(tx.tps) > Number(tx.montant_ht) * 0.06,
+      branding: tx.branding || "jaxa",
     });
     doc.save(`Facture_${tx.numero_facture || tx.id}.pdf`);
   };
@@ -309,6 +313,7 @@ export default function Factures() {
         statut_facture: "Envoyée",
         numero_facture: formNumero,
         lignes_facture: JSON.stringify(lignes),
+        branding: formBranding,
       });
 
       // Generate and download PDF
@@ -325,6 +330,7 @@ export default function Factures() {
         tvq: tvqAmount,
         total_ttc: totalTTC,
         use_tvh: false,
+        branding: formBranding,
       });
       doc.save(`Facture_${formNumero}.pdf`);
 
@@ -335,6 +341,7 @@ export default function Factures() {
       ]);
       setFormNumero("");
       setFormNotes("");
+      setFormBranding("jaxa");
       fetchData();
     } finally {
       setSaving(false);
@@ -666,8 +673,8 @@ export default function Factures() {
               </div>
             </div>
 
-            {/* Compte + Tax options */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {/* Compte + Tax options + Branding */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="space-y-1.5">
                 <Label>Compte bancaire</Label>
                 <Select value={formCompteId} onValueChange={setFormCompteId}>
@@ -680,6 +687,18 @@ export default function Factures() {
                         {c.nom}
                       </SelectItem>
                     ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Facture au nom de</Label>
+                <Select value={formBranding} onValueChange={(v) => setFormBranding(v as "jaxa" | "micho")}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="jaxa">Jaxa Production</SelectItem>
+                    <SelectItem value="micho">Studio Micho</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

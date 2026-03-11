@@ -1,14 +1,28 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { api } from '@/lib/api';
-import type { Projet, Transaction } from '@/types';
-import { FolderOpen } from 'lucide-react';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { api } from "@/lib/api";
+import type { Projet, Transaction } from "@/types";
+import { FolderOpen } from "lucide-react";
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(n);
+  new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
+    n,
+  );
 
 export default function ProjetList() {
   const [projets, setProjets] = useState<Projet[]>([]);
@@ -18,7 +32,10 @@ export default function ProjetList() {
   const [loadingTx, setLoadingTx] = useState(false);
 
   useEffect(() => {
-    api.get<Projet[]>('/api/projets').then(setProjets).finally(() => setLoading(false));
+    api
+      .get<Projet[]>("/api/projets")
+      .then(setProjets)
+      .finally(() => setLoading(false));
   }, []);
 
   const openProjet = async (p: Projet) => {
@@ -26,7 +43,7 @@ export default function ProjetList() {
     setLoadingTx(true);
     try {
       const data = await api.get<{ rows: Transaction[]; total: number }>(
-        `/api/transactions?projet=${p.id}&limit=200`
+        `/api/transactions?projet=${p.id}&limit=200`,
       );
       setProjetTx(data.rows);
     } finally {
@@ -35,7 +52,11 @@ export default function ProjetList() {
   };
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Chargement...</p></div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
   }
 
   return (
@@ -49,20 +70,31 @@ export default function ProjetList() {
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
-            {projets.map(p => {
+            {projets.map((p) => {
               const rev = Number(p.revenus || 0);
               const dep = Number(p.depenses || 0);
               const marge = rev - dep;
               const pct = rev > 0 ? (marge / rev) * 100 : 0;
               return (
-                <Card key={p.id} className="cursor-pointer hover:shadow-md transition-shadow"
-                  onClick={() => openProjet(p)}>
+                <Card
+                  key={p.id}
+                  className="cursor-pointer hover:shadow-md transition-shadow"
+                  onClick={() => openProjet(p)}
+                >
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-lg">{p.code}</span>
-                      <Badge variant={p.statut === 'En cours' ? 'default' : 'secondary'}>{p.statut}</Badge>
+                      <Badge
+                        variant={
+                          p.statut === "En cours" ? "default" : "secondary"
+                        }
+                      >
+                        {p.statut}
+                      </Badge>
                     </div>
-                    <p className="text-sm text-muted-foreground mb-3">{p.nom}</p>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {p.nom}
+                    </p>
                     <div className="grid grid-cols-3 gap-2 text-sm">
                       <div>
                         <p className="text-muted-foreground">Revenus</p>
@@ -74,11 +106,42 @@ export default function ProjetList() {
                       </div>
                       <div>
                         <p className="text-muted-foreground">Marge</p>
-                        <p className={`font-mono ${marge >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                        <p
+                          className={`font-mono ${marge >= 0 ? "text-green-700" : "text-red-700"}`}
+                        >
                           {pct.toFixed(0)}%
                         </p>
                       </div>
                     </div>
+                    {p.budget &&
+                      Number(p.budget) > 0 &&
+                      (() => {
+                        const budgetPct = (dep / Number(p.budget)) * 100;
+                        const barColor =
+                          budgetPct >= 100
+                            ? "bg-red-500"
+                            : budgetPct >= 80
+                              ? "bg-amber-500"
+                              : "bg-green-500";
+                        return (
+                          <div className="mt-3">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>Budget</span>
+                              <span>
+                                {fmt(dep)} / {fmt(Number(p.budget))}
+                              </span>
+                            </div>
+                            <div className="h-1.5 bg-slate-100 rounded overflow-hidden">
+                              <div
+                                className={`h-1.5 rounded ${barColor}`}
+                                style={{
+                                  width: `${Math.min(budgetPct, 100)}%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })()}
                   </CardContent>
                 </Card>
               );
@@ -87,10 +150,15 @@ export default function ProjetList() {
         </CardContent>
       </Card>
 
-      <Dialog open={!!selectedProjet} onOpenChange={() => setSelectedProjet(null)}>
+      <Dialog
+        open={!!selectedProjet}
+        onOpenChange={() => setSelectedProjet(null)}
+      >
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedProjet?.code} — {selectedProjet?.nom}</DialogTitle>
+            <DialogTitle>
+              {selectedProjet?.code} — {selectedProjet?.nom}
+            </DialogTitle>
           </DialogHeader>
           {loadingTx ? (
             <p className="text-muted-foreground py-4">Chargement...</p>
@@ -107,20 +175,39 @@ export default function ProjetList() {
               </TableHeader>
               <TableBody>
                 {projetTx.length === 0 ? (
-                  <TableRow><TableCell colSpan={5} className="text-center py-4 text-muted-foreground">Aucune transaction</TableCell></TableRow>
-                ) : projetTx.map(tx => (
-                  <TableRow key={tx.id}>
-                    <TableCell>{tx.date_transaction}</TableCell>
-                    <TableCell>
-                      <Badge variant={tx.type === 'revenu' ? 'default' : 'destructive'}>{tx.type}</Badge>
-                    </TableCell>
-                    <TableCell className="max-w-xs truncate">{tx.description}</TableCell>
-                    <TableCell>{tx.contact_nom}</TableCell>
-                    <TableCell className={`text-right font-mono ${tx.type === 'revenu' ? 'text-green-700' : 'text-red-700'}`}>
-                      {fmt(Number(tx.total_ttc))}
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="text-center py-4 text-muted-foreground"
+                    >
+                      Aucune transaction
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  projetTx.map((tx) => (
+                    <TableRow key={tx.id}>
+                      <TableCell>{tx.date_transaction}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            tx.type === "revenu" ? "default" : "destructive"
+                          }
+                        >
+                          {tx.type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="max-w-xs truncate">
+                        {tx.description}
+                      </TableCell>
+                      <TableCell>{tx.contact_nom}</TableCell>
+                      <TableCell
+                        className={`text-right font-mono ${tx.type === "revenu" ? "text-green-700" : "text-red-700"}`}
+                      >
+                        {fmt(Number(tx.total_ttc))}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           )}

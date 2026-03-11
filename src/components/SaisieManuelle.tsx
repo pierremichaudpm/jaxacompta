@@ -37,10 +37,21 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
-    label: "Frais forfait Cpte 21 (FIS)",
+    label: "Frais banque Cpte 20",
     data: {
       type: "dépense",
-      description: "Frais forfaitaires — Compte 2-21 La Fissure",
+      description: "Frais bancaires — Compte 1-20 Opérations",
+      categorie_id: 5, // Frais bancaires
+      compte_id: 1, // Cpte 1-20 Opérations
+      mode_paiement: "Débit",
+      taxable: false,
+    },
+  },
+  {
+    label: "Frais banque Cpte 21 (FIS)",
+    data: {
+      type: "dépense",
+      description: "Frais bancaires — Compte 2-21 La Fissure",
       categorie_id: 5, // Frais bancaires
       projet_id: 6, // FIS — La Fissure
       compte_id: 2, // Cpte 2-21 La Fissure
@@ -49,13 +60,35 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
-    label: "Frais forfait Cpte 24 (WF)",
+    label: "Frais banque Cpte 24 (WF)",
     data: {
       type: "dépense",
-      description: "Frais forfaitaires — Compte 2-24 Whispering Forest",
+      description: "Frais bancaires — Compte 2-24 Whispering Forest",
       categorie_id: 5, // Frais bancaires
       projet_id: 5, // WF — Whispering Forest
       compte_id: 3, // Cpte 2-24 Whispering Forest
+      mode_paiement: "Débit",
+      taxable: false,
+    },
+  },
+  {
+    label: "Frais banque MC",
+    data: {
+      type: "dépense",
+      description: "Frais bancaires — Mastercard",
+      categorie_id: 5, // Frais bancaires
+      compte_id: 4, // MC
+      mode_paiement: "Débit",
+      taxable: false,
+    },
+  },
+  {
+    label: "Frais banque Wise",
+    data: {
+      type: "dépense",
+      description: "Frais bancaires — Wise",
+      categorie_id: 5, // Frais bancaires
+      compte_id: 5, // WISE
       mode_paiement: "Débit",
       taxable: false,
     },
@@ -106,13 +139,14 @@ export default function SaisieManuelle() {
             Raccourcis
           </CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="flex flex-wrap gap-2">
+        <CardContent className="p-3 sm:p-6">
+          <div className="flex gap-2 overflow-x-auto pb-2 sm:flex-wrap sm:overflow-visible sm:pb-0">
             {SHORTCUTS.map((s) => (
               <Button
                 key={s.label}
                 variant="outline"
                 size="sm"
+                className="shrink-0 text-xs sm:text-sm"
                 onClick={() => applyShortcut(s.data)}
               >
                 {s.label}

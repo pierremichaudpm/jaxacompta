@@ -35,6 +35,9 @@ import {
   ArrowUp,
   ArrowDown,
   FileText,
+  Paperclip,
+  Copy,
+  CheckCircle,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import type {
@@ -45,6 +48,7 @@ import type {
   LigneFacture,
 } from "@/types";
 import TransactionForm from "./TransactionForm";
+import DuplicateReview from "./DuplicateReview";
 import { generateFacturePDF } from "@/lib/generateFacturePDF";
 import * as XLSX from "xlsx";
 
@@ -78,6 +82,7 @@ export default function TransactionList() {
   const [projets, setProjets] = useState<Projet[]>([]);
   const [comptes, setComptes] = useState<CompteBancaire[]>([]);
   const [editTx, setEditTx] = useState<Transaction | null>(null);
+  const [showDuplicates, setShowDuplicates] = useState(false);
   const [sortField, setSortField] = useState<SortField>("date_transaction");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
@@ -221,10 +226,20 @@ export default function TransactionList() {
         <CardHeader>
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <CardTitle>Transactions ({total})</CardTitle>
-            <Button variant="outline" size="sm" onClick={exportExcel}>
-              <Download className="h-4 w-4 mr-2" />
-              Export Excel
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowDuplicates(true)}
+              >
+                <Copy className="h-4 w-4 mr-2" />
+                Doublons
+              </Button>
+              <Button variant="outline" size="sm" onClick={exportExcel}>
+                <Download className="h-4 w-4 mr-2" />
+                Export Excel
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -352,7 +367,7 @@ export default function TransactionList() {
                     </span>
                   </TableHead>
                   <TableHead>Compte</TableHead>
-                  <TableHead></TableHead>
+                  <TableHead className="w-[120px] min-w-[120px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -410,8 +425,30 @@ export default function TransactionList() {
                         {fmt(Number(tx.total_ttc))}
                       </TableCell>
                       <TableCell className="text-sm">{tx.compte_nom}</TableCell>
-                      <TableCell>
+                      <TableCell className="whitespace-nowrap">
                         <div className="flex gap-1">
+                          {(tx as Record<string, unknown>).rapproche && (
+                            <CheckCircle
+                              className="h-3.5 w-3.5 text-green-500"
+                              title="Rapprochée"
+                            />
+                          )}
+                          {tx.piece_jointe_url && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-amber-600"
+                              title="Voir le reçu"
+                              onClick={() =>
+                                window.open(
+                                  `/api/upload?key=${encodeURIComponent(tx.piece_jointe_url!)}`,
+                                  "_blank",
+                                )
+                              }
+                            >
+                              <Paperclip className="h-3 w-3" />
+                            </Button>
+                          )}
                           {tx.type === "revenu" && (
                             <Button
                               variant="ghost"
@@ -504,11 +541,27 @@ export default function TransactionList() {
                 numero_facture: editTx.numero_facture || "",
                 notes: editTx.notes || "",
                 ocr_source: editTx.ocr_source,
+                piece_jointe_url: editTx.piece_jointe_url || "",
               }}
               onSaved={() => {
                 setEditTx(null);
                 fetchData();
               }}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Duplicate Review Dialog */}
+      <Dialog open={showDuplicates} onOpenChange={setShowDuplicates}>
+        <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+          <DialogHeader>
+            <DialogTitle>Détection de doublons</DialogTitle>
+          </DialogHeader>
+          {showDuplicates && (
+            <DuplicateReview
+              onClose={() => setShowDuplicates(false)}
+              onDeleted={fetchData}
             />
           )}
         </DialogContent>

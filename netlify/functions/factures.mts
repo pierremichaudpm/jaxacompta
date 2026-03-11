@@ -99,13 +99,14 @@ export default async (req: Request, _context: Context) => {
       INSERT INTO transactions
         (date_transaction, type, description, categorie_id, projet_id,
          contact_id, compte_id, mode_paiement, montant_ht, tps, tvq, total_ttc,
-         taxable, statut_facture, numero_facture, lignes_facture, ocr_source)
+         taxable, statut_facture, numero_facture, lignes_facture, branding, ocr_source)
       VALUES (${data.date_transaction}, 'revenu', ${data.description},
               ${data.categorie_id || 14}, ${data.projet_id}, ${data.contact_id},
               ${data.compte_id}, ${data.mode_paiement || "Virement Interac"},
               ${data.montant_ht}, ${data.tps}, ${data.tvq}, ${data.total_ttc},
               ${data.taxable !== false}, ${data.statut_facture || "Envoyée"},
-              ${data.numero_facture}, ${data.lignes_facture}, false)
+              ${data.numero_facture}, ${data.lignes_facture},
+              ${data.branding || 'jaxa'}, false)
       RETURNING *
     `;
     return new Response(JSON.stringify(result[0]), {

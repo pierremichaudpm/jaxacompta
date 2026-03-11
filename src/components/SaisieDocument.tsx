@@ -1,14 +1,16 @@
-import { useState, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { FileUp, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api';
-import type { OcrResult, TransactionFormData } from '@/types';
-import TransactionForm from './TransactionForm';
+import { useState, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { FileUp, Loader2 } from "lucide-react";
+import { api } from "@/lib/api";
+import type { OcrResult, TransactionFormData } from "@/types";
+import TransactionForm from "./TransactionForm";
 
 export default function SaisieDocument() {
   const [fileName, setFileName] = useState<string | null>(null);
-  const [ocrData, setOcrData] = useState<Partial<TransactionFormData> | null>(null);
+  const [ocrData, setOcrData] = useState<Partial<TransactionFormData> | null>(
+    null,
+  );
   const [ocrConfidence, setOcrConfidence] = useState<number | undefined>();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,10 +25,10 @@ export default function SaisieDocument() {
     const reader = new FileReader();
     reader.onload = async () => {
       const dataUrl = reader.result as string;
-      const base64 = dataUrl.split(',')[1];
+      const base64 = dataUrl.split(",")[1];
 
       try {
-        const result = await api.post<OcrResult>('/api/ocr', {
+        const result = await api.post<OcrResult>("/api/ocr", {
           image: base64,
           mimeType: file.type,
         });
@@ -42,7 +44,7 @@ export default function SaisieDocument() {
           taxable: result.tps > 0 || result.tvq > 0,
           ocr_source: true,
           ocr_confiance: result.confiance,
-          type: 'dépense',
+          type: "dépense",
         });
         setOcrConfidence(result.confiance);
       } catch (err) {
@@ -66,7 +68,7 @@ export default function SaisieDocument() {
     setOcrData(null);
     setOcrConfidence(undefined);
     setError(null);
-    if (inputRef.current) inputRef.current.value = '';
+    if (inputRef.current) inputRef.current.value = "";
   };
 
   return (
@@ -81,9 +83,12 @@ export default function SaisieDocument() {
           </CardHeader>
           <CardContent>
             <div
-              className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors
-                ${dragOver ? 'border-primary bg-primary/5' : 'border-muted-foreground/25 hover:border-primary/50'}`}
-              onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+              className={`border-2 border-dashed rounded-lg p-4 sm:p-8 text-center cursor-pointer transition-colors
+                ${dragOver ? "border-primary bg-primary/5" : "border-muted-foreground/25 hover:border-primary/50"}`}
+              onDragOver={(e) => {
+                e.preventDefault();
+                setDragOver(true);
+              }}
               onDragLeave={() => setDragOver(false)}
               onDrop={handleDrop}
               onClick={() => inputRef.current?.click()}
@@ -92,7 +97,9 @@ export default function SaisieDocument() {
                 ref={inputRef}
                 type="file"
                 accept="image/*,application/pdf"
-                onChange={e => e.target.files?.[0] && processFile(e.target.files[0])}
+                onChange={(e) =>
+                  e.target.files?.[0] && processFile(e.target.files[0])
+                }
                 className="hidden"
               />
               <FileUp className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
@@ -115,10 +122,18 @@ export default function SaisieDocument() {
       {ocrData && (
         <div className="space-y-4">
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={reset}>Déposer un autre document</Button>
-            {fileName && <span className="text-sm text-muted-foreground">{fileName}</span>}
+            <Button variant="outline" onClick={reset}>
+              Déposer un autre document
+            </Button>
+            {fileName && (
+              <span className="text-sm text-muted-foreground">{fileName}</span>
+            )}
           </div>
-          <TransactionForm initialData={ocrData} ocrConfidence={ocrConfidence} onSaved={reset} />
+          <TransactionForm
+            initialData={ocrData}
+            ocrConfidence={ocrConfidence}
+            onSaved={reset}
+          />
         </div>
       )}
     </div>

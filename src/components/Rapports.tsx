@@ -187,7 +187,7 @@ export default function Rapports() {
 
     const typeLabels: Record<string, string> = {
       mensuel: `Mensuel ${mois}`,
-      "trimestriel-taxes": `Trimestriel taxes ${trimestre} ${annee}`,
+      "trimestriel-taxes": `Trimestriel taxes T${trimestre.slice(1)} ${annee}`,
       projet: `Projet`,
       annuel: `Annuel ${annee}`,
     };
@@ -290,10 +290,10 @@ export default function Rapports() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Q1">T1 (Jan-Mar)</SelectItem>
-                      <SelectItem value="Q2">T2 (Avr-Jun)</SelectItem>
-                      <SelectItem value="Q3">T3 (Jul-Sep)</SelectItem>
-                      <SelectItem value="Q4">T4 (Oct-Déc)</SelectItem>
+                      <SelectItem value="Q1">T1 (Fév-Avr)</SelectItem>
+                      <SelectItem value="Q2">T2 (Mai-Jul)</SelectItem>
+                      <SelectItem value="Q3">T3 (Aoû-Oct)</SelectItem>
+                      <SelectItem value="Q4">T4 (Nov-Jan)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

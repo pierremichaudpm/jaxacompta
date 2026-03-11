@@ -1,31 +1,89 @@
-import { useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { DollarSign, TrendingUp, TrendingDown, AlertTriangle } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
-import { api } from '@/lib/api';
-import type { DashboardData } from '@/types';
+import { useEffect, useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  DollarSign,
+  TrendingUp,
+  TrendingDown,
+  AlertTriangle,
+} from "lucide-react";
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+} from "recharts";
+import { api } from "@/lib/api";
+import type { DashboardData } from "@/types";
 
 const fmt = (n: number) =>
-  new Intl.NumberFormat('fr-CA', { style: 'currency', currency: 'CAD' }).format(n);
+  new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
+    n,
+  );
+
+interface BudgetRow {
+  id: number;
+  categorie_nom: string;
+  projet_code: string | null;
+  montant: number;
+  depense_reelle: number;
+}
 
 export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [criticalBudgets, setCriticalBudgets] = useState<BudgetRow[]>([]);
 
   useEffect(() => {
-    api.get<DashboardData>('/api/dashboard').then(setData).finally(() => setLoading(false));
+    api
+      .get<DashboardData>("/api/dashboard")
+      .then(setData)
+      .finally(() => setLoading(false));
+
+    // Fetch budgets for current month to find critical ones
+    const now = new Date();
+    const params = new URLSearchParams({
+      annee: now.getFullYear().toString(),
+      mois: (now.getMonth() + 1).toString(),
+    });
+    api
+      .get<BudgetRow[]>(`/api/budgets?${params}`)
+      .then((rows) =>
+        setCriticalBudgets(
+          rows.filter(
+            (b) =>
+              Number(b.montant) > 0 &&
+              Number(b.depense_reelle) / Number(b.montant) >= 0.8,
+          ),
+        ),
+      )
+      .catch(() => {});
   }, []);
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><p className="text-muted-foreground">Chargement...</p></div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <p className="text-muted-foreground">Chargement...</p>
+      </div>
+    );
   }
 
   if (!data) {
-    return <div className="p-4"><p className="text-red-600">Erreur de chargement</p></div>;
+    return (
+      <div className="p-4">
+        <p className="text-red-600">Erreur de chargement</p>
+      </div>
+    );
   }
 
-  const soldeTotal = data.soldes.reduce((s, c) => s + Number(c.solde_actuel || 0), 0);
+  const soldeTotal = data.soldes.reduce(
+    (s, c) => s + Number(c.solde_actuel || 0),
+    0,
+  );
   const ecart = Number(data.mois.revenus) - Number(data.mois.depenses);
 
   return (
@@ -34,39 +92,59 @@ export default function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Solde total</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Solde total
+            </CardTitle>
             <DollarSign className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{fmt(soldeTotal)}</div>
-            <p className="text-xs text-muted-foreground">{data.soldes.length} comptes</p>
+            <p className="text-xs text-muted-foreground">
+              {data.soldes.length} comptes
+            </p>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Revenus (mois)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Revenus (mois)
+            </CardTitle>
             <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-700">{fmt(Number(data.mois.revenus))}</div>
+            <div className="text-2xl font-bold text-green-700">
+              {fmt(Number(data.mois.revenus))}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Dépenses (mois)</CardTitle>
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Dépenses (mois)
+            </CardTitle>
             <TrendingDown className="h-4 w-4 text-red-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-700">{fmt(Number(data.mois.depenses))}</div>
+            <div className="text-2xl font-bold text-red-700">
+              {fmt(Number(data.mois.depenses))}
+            </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Écart</CardTitle>
-            {ecart >= 0 ? <TrendingUp className="h-4 w-4 text-green-600" /> : <TrendingDown className="h-4 w-4 text-red-600" />}
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Écart
+            </CardTitle>
+            {ecart >= 0 ? (
+              <TrendingUp className="h-4 w-4 text-green-600" />
+            ) : (
+              <TrendingDown className="h-4 w-4 text-red-600" />
+            )}
           </CardHeader>
           <CardContent>
-            <div className={`text-2xl font-bold ${ecart >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+            <div
+              className={`text-2xl font-bold ${ecart >= 0 ? "text-green-700" : "text-red-700"}`}
+            >
               {fmt(ecart)}
             </div>
           </CardContent>
@@ -87,8 +165,18 @@ export default function Dashboard() {
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip formatter={(value: number) => fmt(value)} />
                 <Legend />
-                <Bar dataKey="revenus" name="Revenus" fill="#16a34a" radius={[2, 2, 0, 0]} />
-                <Bar dataKey="depenses" name="Dépenses" fill="#dc2626" radius={[2, 2, 0, 0]} />
+                <Bar
+                  dataKey="revenus"
+                  name="Revenus"
+                  fill="#16a34a"
+                  radius={[2, 2, 0, 0]}
+                />
+                <Bar
+                  dataKey="depenses"
+                  name="Dépenses"
+                  fill="#dc2626"
+                  radius={[2, 2, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -105,16 +193,22 @@ export default function Dashboard() {
             <div className="space-y-3">
               {data.projets.map((p) => {
                 const marge = Number(p.revenus) - Number(p.depenses);
-                const pctMarge = Number(p.revenus) > 0 ? (marge / Number(p.revenus)) * 100 : 0;
+                const pctMarge =
+                  Number(p.revenus) > 0 ? (marge / Number(p.revenus)) * 100 : 0;
                 return (
-                  <div key={p.code} className="flex items-center justify-between border-b pb-2 last:border-0">
+                  <div
+                    key={p.code}
+                    className="flex items-center justify-between border-b pb-2 last:border-0"
+                  >
                     <div>
                       <span className="font-medium">{p.code}</span>
-                      <span className="text-sm text-muted-foreground ml-2">{p.nom}</span>
+                      <span className="text-sm text-muted-foreground ml-2">
+                        {p.nom}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-sm">{fmt(marge)}</span>
-                      <Badge variant={marge >= 0 ? 'default' : 'destructive'}>
+                      <Badge variant={marge >= 0 ? "default" : "destructive"}>
                         {pctMarge.toFixed(0)}%
                       </Badge>
                     </div>
@@ -122,7 +216,9 @@ export default function Dashboard() {
                 );
               })}
               {data.projets.length === 0 && (
-                <p className="text-sm text-muted-foreground">Aucun projet actif</p>
+                <p className="text-sm text-muted-foreground">
+                  Aucun projet actif
+                </p>
               )}
             </div>
           </CardContent>
@@ -136,11 +232,16 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-3">
               {data.soldes.map((c) => (
-                <div key={c.code} className="flex items-center justify-between border-b pb-2 last:border-0">
+                <div
+                  key={c.code}
+                  className="flex items-center justify-between border-b pb-2 last:border-0"
+                >
                   <div>
                     <span className="font-medium">{c.nom}</span>
                   </div>
-                  <span className={`font-mono ${Number(c.solde_actuel) >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                  <span
+                    className={`font-mono ${Number(c.solde_actuel) >= 0 ? "text-green-700" : "text-red-700"}`}
+                  >
                     {fmt(Number(c.solde_actuel))}
                   </span>
                 </div>
@@ -149,6 +250,51 @@ export default function Dashboard() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Budgets critiques */}
+      {criticalBudgets.length > 0 && (
+        <Card className="border-amber-200">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-amber-700">
+              <AlertTriangle className="h-5 w-5" />
+              Budgets critiques ({criticalBudgets.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {criticalBudgets.map((b) => {
+                const pct =
+                  (Number(b.depense_reelle) / Number(b.montant)) * 100;
+                const barColor = pct >= 100 ? "bg-red-500" : "bg-amber-500";
+                return (
+                  <div key={b.id} className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium">
+                        {b.categorie_nom}
+                        {b.projet_code && (
+                          <span className="text-muted-foreground ml-1">
+                            ({b.projet_code})
+                          </span>
+                        )}
+                      </span>
+                      <span className="font-mono">
+                        {fmt(Number(b.depense_reelle))} /{" "}
+                        {fmt(Number(b.montant))}
+                      </span>
+                    </div>
+                    <div className="h-1.5 bg-slate-100 rounded overflow-hidden">
+                      <div
+                        className={`h-1.5 rounded ${barColor}`}
+                        style={{ width: `${Math.min(pct, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Factures en retard */}
       {data.factures_retard.length > 0 && (
@@ -162,13 +308,24 @@ export default function Dashboard() {
           <CardContent>
             <div className="space-y-2">
               {data.factures_retard.map((f) => (
-                <div key={f.id} className="flex items-center justify-between text-sm">
+                <div
+                  key={f.id}
+                  className="flex items-center justify-between text-sm"
+                >
                   <div>
                     <span className="font-medium">{f.contact_nom}</span>
-                    <span className="text-muted-foreground ml-2">{f.description}</span>
-                    {f.projet_code && <Badge variant="outline" className="ml-2">{f.projet_code}</Badge>}
+                    <span className="text-muted-foreground ml-2">
+                      {f.description}
+                    </span>
+                    {f.projet_code && (
+                      <Badge variant="outline" className="ml-2">
+                        {f.projet_code}
+                      </Badge>
+                    )}
                   </div>
-                  <span className="font-mono text-red-700">{fmt(Number(f.total_ttc))}</span>
+                  <span className="font-mono text-red-700">
+                    {fmt(Number(f.total_ttc))}
+                  </span>
                 </div>
               ))}
             </div>

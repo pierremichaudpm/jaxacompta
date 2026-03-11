@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,7 +21,21 @@ import type {
   Contact,
   CompteBancaire,
 } from "@/types";
-import { Save } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Save,
+  Paperclip,
+  Trash2,
+  Loader2,
+  AlertTriangle,
+  Plus,
+} from "lucide-react";
+import type { Transaction } from "@/types";
 
 type InputEvent = React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>;
 
@@ -75,6 +89,14 @@ export default function TransactionForm({
   const [comptes, setComptes] = useState<CompteBancaire[]>([]);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [duplicates, setDuplicates] = useState<Transaction[]>([]);
+  const [bypassDuplicate, setBypassDuplicate] = useState(false);
+  const [showNewContact, setShowNewContact] = useState(false);
+  const [newContactNom, setNewContactNom] = useState("");
+  const [newContactType, setNewContactType] = useState("fournisseur");
+  const [savingContact, setSavingContact] = useState(false);
+  const [manualTax, setManualTax] = useState(false);
 
   useEffect(() => {
     Promise.all([
@@ -102,31 +124,106 @@ export default function TransactionForm({
   ) => {
     setForm((prev) => {
       const next = { ...prev, [key]: value };
-      // Auto-calcul taxes
-      if (key === "montant_ht" && next.taxable) {
-        const ht = Number(value) || 0;
-        next.tps = Math.round(ht * 0.05 * 100) / 100;
-        next.tvq = Math.round(ht * 0.09975 * 100) / 100;
-        next.total_ttc = Math.round((ht + next.tps + next.tvq) * 100) / 100;
+      const round2 = (n: number) => Math.round(n * 100) / 100;
+
+      if (!manualTax) {
+        // Mode auto : calcul TPS/TVQ/TTC depuis le HT
+        if (key === "montant_ht" && next.taxable) {
+          const ht = Number(value) || 0;
+          next.tps = round2(ht * 0.05);
+          next.tvq = round2(ht * 0.09975);
+          next.total_ttc = round2(ht + next.tps + next.tvq);
+        }
+        if (key === "montant_ht" && !next.taxable) {
+          next.total_ttc = Number(value) || 0;
+        }
       }
+      // Mode manuel : aucun calcul auto
+
       if (key === "taxable" && !value) {
         next.tps = 0;
         next.tvq = 0;
         next.total_ttc = next.montant_ht;
       }
-      if (key === "taxable" && value) {
+      if (key === "taxable" && value && !manualTax) {
         const ht = next.montant_ht;
-        next.tps = Math.round(ht * 0.05 * 100) / 100;
-        next.tvq = Math.round(ht * 0.09975 * 100) / 100;
-        next.total_ttc = Math.round((ht + next.tps + next.tvq) * 100) / 100;
+        next.tps = round2(ht * 0.05);
+        next.tvq = round2(ht * 0.09975);
+        next.total_ttc = round2(ht + next.tps + next.tvq);
       }
       return next;
     });
     setSaved(false);
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      const token = localStorage.getItem("jaxa_token");
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      if (!res.ok) throw new Error("Upload failed");
+      const { key } = await res.json();
+      updateField("piece_jointe_url", key);
+    } catch (err) {
+      console.error("Upload error:", err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCreateContact = async () => {
+    if (!newContactNom.trim()) return;
+    setSavingContact(true);
+    try {
+      const created = await api.post<Contact>("/api/contacts", {
+        nom: newContactNom.trim(),
+        type: newContactType,
+      });
+      setContacts((prev) =>
+        [...prev, created].sort((a, b) => a.nom.localeCompare(b.nom)),
+      );
+      updateField("contact_id", created.id);
+      setShowNewContact(false);
+      setNewContactNom("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSavingContact(false);
+    }
+  };
+
+  const handleRemoveAttachment = () => {
+    updateField("piece_jointe_url", "");
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Duplicate check (only for new transactions)
+    if (!editId && !bypassDuplicate && form.total_ttc) {
+      try {
+        const found = await api.post<Transaction[]>("/api/duplicates", {
+          date_transaction: form.date_transaction,
+          total_ttc: form.total_ttc,
+          description: form.description,
+        });
+        if (found.length > 0) {
+          setDuplicates(found);
+          return;
+        }
+      } catch {
+        // If duplicate check fails, proceed anyway
+      }
+    }
+
     setSaving(true);
     try {
       if (editId) {
@@ -135,6 +232,8 @@ export default function TransactionForm({
         await api.post("/api/transactions", form);
       }
       setSaved(true);
+      setDuplicates([]);
+      setBypassDuplicate(false);
       if (!editId) {
         setForm((prev) => ({
           ...prev,
@@ -144,6 +243,7 @@ export default function TransactionForm({
           tvq: 0,
           total_ttc: 0,
           numero_facture: "",
+          piece_jointe_url: "",
           notes: "",
           ocr_source: false,
           ocr_confiance: undefined,
@@ -254,21 +354,33 @@ export default function TransactionForm({
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="space-y-1.5">
           <Label>Contact / Fournisseur</Label>
-          <Select
-            value={form.contact_id?.toString() || ""}
-            onValueChange={(v) => updateField("contact_id", Number(v))}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Choisir..." />
-            </SelectTrigger>
-            <SelectContent>
-              {contacts.map((c) => (
-                <SelectItem key={c.id} value={c.id.toString()}>
-                  {c.nom}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-1">
+            <Select
+              value={form.contact_id?.toString() || ""}
+              onValueChange={(v) => updateField("contact_id", Number(v))}
+            >
+              <SelectTrigger className="flex-1">
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                {contacts.map((c) => (
+                  <SelectItem key={c.id} value={c.id.toString()}>
+                    {c.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              className="shrink-0"
+              title="Nouveau contact"
+              onClick={() => setShowNewContact(true)}
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         <div className="space-y-1.5">
           <Label>Compte bancaire</Label>
@@ -322,7 +434,7 @@ export default function TransactionForm({
 
       {/* Montants — 2 cols mobile, 4 cols desktop */}
       <div className="space-y-3">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <Label className="text-sm font-semibold">Montants</Label>
           <div className="flex items-center gap-2">
             <Checkbox
@@ -332,6 +444,16 @@ export default function TransactionForm({
             />
             <Label htmlFor="taxable" className="text-sm">
               Taxable
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="manualTax"
+              checked={manualTax}
+              onCheckedChange={(v) => setManualTax(v as boolean)}
+            />
+            <Label htmlFor="manualTax" className="text-sm text-muted-foreground">
+              Saisie manuelle
             </Label>
           </div>
         </div>
@@ -360,7 +482,7 @@ export default function TransactionForm({
               step="0.01"
               value={form.tps || ""}
               onChange={(e) => updateField("tps", Number(e.target.value))}
-              disabled={!form.taxable}
+              disabled={!form.taxable && !manualTax}
             />
           </div>
           <div className="space-y-1.5">
@@ -373,7 +495,7 @@ export default function TransactionForm({
               step="0.01"
               value={form.tvq || ""}
               onChange={(e) => updateField("tvq", Number(e.target.value))}
-              disabled={!form.taxable}
+              disabled={!form.taxable && !manualTax}
             />
           </div>
           <div className="space-y-1.5">
@@ -385,8 +507,10 @@ export default function TransactionForm({
               type="number"
               step="0.01"
               value={form.total_ttc || ""}
+              onChange={(e) =>
+                updateField("total_ttc", Number(e.target.value))
+              }
               className="font-bold"
-              readOnly
             />
           </div>
         </div>
@@ -403,6 +527,88 @@ export default function TransactionForm({
         />
       </div>
 
+      {/* Pièce jointe */}
+      <div className="space-y-1.5">
+        <Label>Pièce jointe (reçu / facture)</Label>
+        {form.piece_jointe_url ? (
+          <div className="flex items-center gap-2 text-sm">
+            <a
+              href={`/api/upload?key=${encodeURIComponent(form.piece_jointe_url)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 underline flex items-center gap-1"
+            >
+              <Paperclip className="h-3 w-3" /> Voir le reçu
+            </a>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-6 w-6 p-0 text-red-500"
+              onClick={handleRemoveAttachment}
+            >
+              <Trash2 className="h-3 w-3" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Input
+              type="file"
+              accept="image/*,application/pdf"
+              onChange={handleFileUpload}
+              disabled={uploading}
+              className="text-sm"
+            />
+            {uploading && (
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Duplicate warning */}
+      {duplicates.length > 0 && !bypassDuplicate && (
+        <div className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          <AlertTriangle className="h-4 w-4 inline mr-1" />
+          <strong>{duplicates.length} transaction(s) similaire(s)</strong>{" "}
+          détectée(s) :
+          <ul className="mt-1 ml-4 list-disc text-xs space-y-0.5">
+            {duplicates.map((d) => (
+              <li key={d.id}>
+                {d.date_transaction} — {d.description} —{" "}
+                {new Intl.NumberFormat("fr-CA", {
+                  style: "currency",
+                  currency: "CAD",
+                }).format(Number(d.total_ttc))}
+              </li>
+            ))}
+          </ul>
+          <div className="mt-2 flex gap-2">
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setBypassDuplicate(true);
+                // Re-submit the form
+                const formEl = document.querySelector("form");
+                formEl?.requestSubmit();
+              }}
+            >
+              Ignorer et enregistrer
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={() => setDuplicates([])}
+            >
+              Annuler
+            </Button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-3">
         <Button type="submit" disabled={saving}>
           <Save className="h-4 w-4 mr-2" />
@@ -416,6 +622,50 @@ export default function TransactionForm({
           <span className="text-sm text-green-600">Enregistré avec succès</span>
         )}
       </div>
+
+      {/* New Contact Dialog */}
+      <Dialog open={showNewContact} onOpenChange={setShowNewContact}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nouveau contact</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>Nom</Label>
+              <Input
+                value={newContactNom}
+                onChange={(e) => setNewContactNom(e.target.value)}
+                placeholder="Nom du fournisseur / client"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    e.preventDefault();
+                    handleCreateContact();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Type</Label>
+              <Select value={newContactType} onValueChange={setNewContactType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fournisseur">Fournisseur</SelectItem>
+                  <SelectItem value="client">Client</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              onClick={handleCreateContact}
+              disabled={savingContact || !newContactNom.trim()}
+            >
+              {savingContact ? "Enregistrement..." : "Ajouter"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </form>
   );
 
@@ -435,7 +685,7 @@ export default function TransactionForm({
           )}
         </CardTitle>
       </CardHeader>
-      <CardContent>{formContent}</CardContent>
+      <CardContent className="p-3 sm:p-6">{formContent}</CardContent>
     </Card>
   );
 }

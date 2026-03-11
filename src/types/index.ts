@@ -71,6 +71,7 @@ export interface Transaction {
   created_at: string;
   updated_at: string;
   lignes_facture: string | null;
+  branding?: "jaxa" | "micho";
   // Joined fields
   categorie_nom?: string;
   projet_code?: string;
@@ -103,6 +104,7 @@ export interface TransactionFormData {
   ocr_source: boolean;
   ocr_confiance?: number;
   notes?: string;
+  branding?: "jaxa" | "micho";
   projets_ids?: number[];
 }
 
@@ -132,6 +134,34 @@ export interface DashboardData {
   }[];
   projets: Projet[];
   factures_retard: Transaction[];
+}
+
+export interface Recurrence {
+  id: number;
+  type: "dépense" | "revenu" | "transfert";
+  description: string | null;
+  categorie_id: number | null;
+  projet_id: number | null;
+  contact_id: number | null;
+  compte_id: number | null;
+  mode_paiement: string | null;
+  montant_ht: number;
+  tps: number;
+  tvq: number;
+  total_ttc: number;
+  taxable: boolean;
+  notes: string | null;
+  frequence: "hebdomadaire" | "mensuel" | "trimestriel" | "annuel";
+  date_debut: string;
+  date_fin: string | null;
+  prochaine_date: string;
+  actif: boolean;
+  created_at: string;
+  // Joined
+  categorie_nom?: string;
+  projet_code?: string;
+  contact_nom?: string;
+  compte_nom?: string;
 }
 
 export interface PeriodeFiscale {
