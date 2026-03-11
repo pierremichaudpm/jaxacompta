@@ -97,18 +97,19 @@ export default function ContactList() {
   };
 
   const openEdit = (c: Contact) => {
-    setEditingContact(c);
-    setFormNom(c.nom);
-    setFormType(c.type);
-    setFormEmail(c.email || "");
-    setFormTelephone(c.telephone || "");
-    setFormNumeroTps(c.numero_tps || "");
-    setFormNumeroTvq(c.numero_tvq || "");
-    setFormAdresses(
-      c.adresses && c.adresses.length > 0
-        ? c.adresses.map((a) => ({ ...a }))
-        : []
-    );
+    try {
+      setEditingContact(c);
+      setFormNom(c.nom || "");
+      setFormType(c.type || "client");
+      setFormEmail(c.email || "");
+      setFormTelephone(c.telephone || "");
+      setFormNumeroTps(c.numero_tps || "");
+      setFormNumeroTvq(c.numero_tvq || "");
+      const adrs = Array.isArray(c.adresses) ? c.adresses : [];
+      setFormAdresses(adrs.map((a) => ({ label: a.label || "", adresse: a.adresse || "" })));
+    } catch (e) {
+      console.error("openEdit error:", e);
+    }
     setShowForm(true);
   };
 
@@ -142,14 +143,18 @@ export default function ContactList() {
       adresses: formAdresses.filter((a) => a.adresse.trim() !== ""),
     };
 
-    if (editingContact) {
-      await api.put("/api/contacts", { id: editingContact.id, ...payload });
-    } else {
-      await api.post("/api/contacts", payload);
+    try {
+      if (editingContact) {
+        await api.put("/api/contacts", { id: editingContact.id, ...payload });
+      } else {
+        await api.post("/api/contacts", payload);
+      }
+      resetForm();
+      await loadContacts();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      alert(`Erreur : ${msg}`);
     }
-
-    resetForm();
-    await loadContacts();
   };
 
   const handleDelete = async () => {
@@ -265,6 +270,7 @@ export default function ContactList() {
                       </TableCell>
                       <TableCell>
                         <Button
+                          type="button"
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
@@ -300,6 +306,7 @@ export default function ContactList() {
                       </Badge>
                     </div>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="icon"
                       className="h-8 w-8 shrink-0"

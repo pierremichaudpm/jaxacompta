@@ -363,8 +363,8 @@ export default function Factures() {
         });
       }
 
-      // Generate and download PDF
-      const doc = generateFacturePDF({
+      // Save succeeded — close dialog and refresh
+      const pdfData = {
         numero_facture: formNumero,
         date_facture: formDate,
         client_nom: client?.nom || "Client",
@@ -377,12 +377,23 @@ export default function Factures() {
         tvq: tvqAmount,
         total_ttc: totalTTC,
         use_tvh: false,
-        branding: formBranding,
-      });
-      doc.save(`Facture_${formNumero}.pdf`);
+        branding: formBranding as "jaxa" | "micho",
+      };
+      const pdfNumero = formNumero;
 
       resetForm();
       fetchData();
+
+      // Generate PDF after save (non-blocking)
+      try {
+        const doc = generateFacturePDF(pdfData);
+        doc.save(`Facture_${pdfNumero}.pdf`);
+      } catch {
+        alert("Facture enregistree mais erreur lors de la generation du PDF.");
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Erreur inconnue";
+      alert(`Erreur lors de l'enregistrement : ${msg}`);
     } finally {
       setSaving(false);
     }
@@ -1061,19 +1072,28 @@ export default function Factures() {
             </div>
 
             {/* Actions */}
-            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-              <Button variant="outline" onClick={resetForm}>
-                Annuler
-              </Button>
-              <Button
-                onClick={handleCreate}
-                disabled={
-                  saving || !formClientId || !formNumero || sousTotal === 0
-                }
-              >
-                <Download className="h-4 w-4 mr-2" />
-                {saving ? "Enregistrement..." : editingId ? "Modifier + PDF" : "Enregistrer + PDF"}
-              </Button>
+            <div className="space-y-2">
+              {!saving && (!formClientId || !formNumero || sousTotal === 0) && (
+                <p className="text-xs text-red-500 text-right">
+                  {!formClientId ? "Client requis. " : ""}
+                  {!formNumero ? "N° facture requis. " : ""}
+                  {sousTotal === 0 ? "Montant requis (remplir Coût unit.)." : ""}
+                </p>
+              )}
+              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+                <Button variant="outline" onClick={resetForm}>
+                  Annuler
+                </Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={
+                    saving || !formClientId || !formNumero || sousTotal === 0
+                  }
+                >
+                  <Download className="h-4 w-4 mr-2" />
+                  {saving ? "Enregistrement..." : editingId ? "Modifier + PDF" : "Enregistrer + PDF"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>
