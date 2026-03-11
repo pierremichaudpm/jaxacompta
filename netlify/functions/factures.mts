@@ -162,6 +162,20 @@ export default async (req: Request, _context: Context) => {
     });
   }
 
+  if (req.method === "DELETE") {
+    const id = url.searchParams.get("id");
+    if (!id) {
+      return new Response(JSON.stringify({ error: "ID requis" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    await sql`DELETE FROM transactions WHERE id = ${id}`;
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   return new Response("Method not allowed", { status: 405 });
 };
 

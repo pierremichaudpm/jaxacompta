@@ -26,6 +26,7 @@ export interface Contact {
   adresse: string | null;
   numero_tps: string | null;
   numero_tvq: string | null;
+  adresses?: {label: string; adresse: string}[];
 }
 
 export interface LigneFacture {

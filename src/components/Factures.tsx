@@ -40,9 +40,12 @@ import {
   Mail,
   Pencil,
   Users,
+  ArrowLeft,
+  Ban,
 } from "lucide-react";
 import { api } from "@/lib/api";
 import { generateFacturePDF } from "@/lib/generateFacturePDF";
+import ContactList from "@/components/ContactList";
 import type {
   Transaction,
   Contact,
@@ -62,6 +65,7 @@ const STATUT_OPTIONS = [
   "En retard",
   "En attente",
   "À valider",
+  "Annulée",
 ];
 
 const STATUT_COLORS: Record<string, string> = {
@@ -70,6 +74,7 @@ const STATUT_COLORS: Record<string, string> = {
   "En retard": "destructive",
   "En attente": "outline",
   "À valider": "outline",
+  Annulée: "outline",
 };
 
 interface NewLigne {
@@ -112,23 +117,12 @@ export default function Factures() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Contact editing state
+  // Contact state
   const [showContacts, setShowContacts] = useState(false);
-  const [allContacts, setAllContacts] = useState<Contact[]>([]);
-  const [editContact, setEditContact] = useState<Contact | null>(null);
-  const [contactForm, setContactForm] = useState({
-    nom: "",
-    type: "client" as string,
-    email: "",
-    telephone: "",
-    adresse: "",
-    numero_tps: "",
-    numero_tvq: "",
-  });
+  const [formAdresseIdx, setFormAdresseIdx] = useState<string>("");
 
   const loadContacts = async () => {
     const c = await api.get<Contact[]>("/api/contacts");
-    setAllContacts(c);
     setContacts(c.filter((x) => x.type === "client" || x.type === "les deux"));
   };
 
@@ -138,7 +132,6 @@ export default function Factures() {
       api.get<Projet[]>("/api/projets"),
       api.get<CompteBancaire[]>("/api/comptes"),
     ]).then(([c, p, cpt]) => {
-      setAllContacts(c);
       setContacts(
         c.filter((x) => x.type === "client" || x.type === "les deux"),
       );
@@ -147,25 +140,6 @@ export default function Factures() {
     });
   }, []);
 
-  const startEditContact = (c: Contact) => {
-    setEditContact(c);
-    setContactForm({
-      nom: c.nom,
-      type: c.type,
-      email: c.email || "",
-      telephone: c.telephone || "",
-      adresse: c.adresse || "",
-      numero_tps: c.numero_tps || "",
-      numero_tvq: c.numero_tvq || "",
-    });
-  };
-
-  const saveContact = async () => {
-    if (!editContact) return;
-    await api.put("/api/contacts", { id: editContact.id, ...contactForm });
-    setEditContact(null);
-    await loadContacts();
-  };
 
   const handleSendEmail = (tx: Transaction) => {
     const email = tx.contact_email || "";
@@ -291,6 +265,12 @@ export default function Factures() {
     fetchData();
   };
 
+  const handleDelete = async (tx: Transaction) => {
+    if (!confirm(`Supprimer la facture ${tx.numero_facture || tx.id} ?`)) return;
+    await api.delete(`/api/factures?id=${tx.id}`);
+    fetchData();
+  };
+
   const startEdit = (tx: Transaction) => {
     setEditingId(tx.id);
     setFormClientId(tx.contact_id ? tx.contact_id.toString() : "");
@@ -337,6 +317,16 @@ export default function Factures() {
     setFormCompteId("1");
     setFormTaxable(true);
     setFormDate(new Date().toISOString().split("T")[0]);
+    setFormAdresseIdx("");
+  };
+
+  const getClientAdresse = (client: Contact | undefined): string | null => {
+    if (!client) return null;
+    if (client.adresses && client.adresses.length > 0) {
+      const idx = formAdresseIdx ? Number(formAdresseIdx) : 0;
+      return client.adresses[idx]?.adresse || client.adresse || null;
+    }
+    return client.adresse || null;
   };
 
   const handleCreate = async () => {
@@ -378,7 +368,7 @@ export default function Factures() {
         numero_facture: formNumero,
         date_facture: formDate,
         client_nom: client?.nom || "Client",
-        client_adresse: client?.adresse || null,
+        client_adresse: getClientAdresse(client),
         client_telephone: client?.telephone || null,
         projet_nom: projet?.nom || null,
         lignes,
@@ -412,6 +402,24 @@ export default function Factures() {
       setFormNumero(`${prefix}-${date}`);
     }
   };
+
+  if (showContacts) {
+    return (
+      <div className="space-y-4">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setShowContacts(false);
+            loadContacts();
+          }}
+        >
+          <ArrowLeft className="h-4 w-4 mr-2" />
+          Retour aux factures
+        </Button>
+        <ContactList />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -609,13 +617,7 @@ export default function Factures() {
                               if (tx.contact_email) {
                                 handleSendEmail(tx);
                               } else {
-                                const c = allContacts.find(
-                                  (x) => x.id === tx.contact_id,
-                                );
-                                if (c) {
-                                  startEditContact(c);
-                                  setShowContacts(true);
-                                }
+                                setShowContacts(true);
                               }
                             }}
                           >
@@ -645,6 +647,26 @@ export default function Factures() {
                               <AlertTriangle className="h-3 w-3" />
                             </Button>
                           )}
+                          {tx.statut_facture && tx.statut_facture !== "Annulée" && tx.statut_facture !== "Payée" && (
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 text-orange-600"
+                              title="Annuler la facture"
+                              onClick={() => handleUpdateStatut(tx, "Annulée")}
+                            >
+                              <Ban className="h-3 w-3" />
+                            </Button>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-red-500"
+                            title="Supprimer"
+                            onClick={() => handleDelete(tx)}
+                          >
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -667,7 +689,7 @@ export default function Factures() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Client</Label>
-                <Select value={formClientId} onValueChange={setFormClientId}>
+                <Select value={formClientId} onValueChange={(v) => { setFormClientId(v); setFormAdresseIdx(""); }}>
                   <SelectTrigger>
                     <SelectValue placeholder="Choisir..." />
                   </SelectTrigger>
@@ -701,6 +723,31 @@ export default function Factures() {
                 </Select>
               </div>
             </div>
+
+            {/* Address selector (when client has multiple addresses) */}
+            {(() => {
+              const selectedClient = contacts.find((c) => c.id === Number(formClientId));
+              if (selectedClient?.adresses && selectedClient.adresses.length > 1) {
+                return (
+                  <div className="space-y-1.5">
+                    <Label>Adresse de facturation</Label>
+                    <Select value={formAdresseIdx || "0"} onValueChange={setFormAdresseIdx}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {selectedClient.adresses.map((a, i) => (
+                          <SelectItem key={i} value={i.toString()}>
+                            {a.label || `Adresse ${i + 1}`} — {a.adresse.split("\n")[0]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* N° Facture + Date */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -1032,165 +1079,6 @@ export default function Factures() {
         </DialogContent>
       </Dialog>
 
-      {/* Contacts Management Dialog */}
-      <Dialog open={showContacts} onOpenChange={setShowContacts}>
-        <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[80vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>Gérer les contacts</DialogTitle>
-          </DialogHeader>
-
-          {editContact ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Modifier : <strong>{editContact.nom}</strong>
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label>Nom</Label>
-                  <Input
-                    value={contactForm.nom}
-                    onChange={(e) =>
-                      setContactForm((p) => ({ ...p, nom: e.target.value }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Type</Label>
-                  <Select
-                    value={contactForm.type}
-                    onValueChange={(v) =>
-                      setContactForm((p) => ({ ...p, type: v }))
-                    }
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="client">Client</SelectItem>
-                      <SelectItem value="fournisseur">Fournisseur</SelectItem>
-                      <SelectItem value="les deux">Les deux</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Courriel</Label>
-                  <Input
-                    type="email"
-                    value={contactForm.email}
-                    onChange={(e) =>
-                      setContactForm((p) => ({ ...p, email: e.target.value }))
-                    }
-                    placeholder="client@example.com"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>Téléphone</Label>
-                  <Input
-                    value={contactForm.telephone}
-                    onChange={(e) =>
-                      setContactForm((p) => ({
-                        ...p,
-                        telephone: e.target.value,
-                      }))
-                    }
-                    placeholder="514-..."
-                  />
-                </div>
-                <div className="sm:col-span-2 space-y-1.5">
-                  <Label>Adresse</Label>
-                  <Textarea
-                    value={contactForm.adresse}
-                    onChange={(e) =>
-                      setContactForm((p) => ({
-                        ...p,
-                        adresse: e.target.value,
-                      }))
-                    }
-                    rows={2}
-                    placeholder="357 rue des Merles, Boucherville, Qc J4B 5Y5"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>N° TPS</Label>
-                  <Input
-                    value={contactForm.numero_tps}
-                    onChange={(e) =>
-                      setContactForm((p) => ({
-                        ...p,
-                        numero_tps: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label>N° TVQ</Label>
-                  <Input
-                    value={contactForm.numero_tvq}
-                    onChange={(e) =>
-                      setContactForm((p) => ({
-                        ...p,
-                        numero_tvq: e.target.value,
-                      }))
-                    }
-                  />
-                </div>
-              </div>
-              <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
-                <Button variant="outline" onClick={() => setEditContact(null)}>
-                  Annuler
-                </Button>
-                <Button onClick={saveContact}>Enregistrer</Button>
-              </div>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {allContacts.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-start justify-between gap-3 border rounded-lg p-3"
-                >
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-medium">{c.nom}</span>
-                      <Badge variant="outline" className="text-xs">
-                        {c.type}
-                      </Badge>
-                    </div>
-                    {c.email && (
-                      <p className="text-sm text-muted-foreground truncate">
-                        {c.email}
-                      </p>
-                    )}
-                    {c.telephone && (
-                      <p className="text-sm text-muted-foreground">
-                        {c.telephone}
-                      </p>
-                    )}
-                    {c.adresse && (
-                      <p className="text-xs text-muted-foreground truncate">
-                        {c.adresse}
-                      </p>
-                    )}
-                    {!c.email && !c.telephone && !c.adresse && (
-                      <p className="text-xs text-muted-foreground italic">
-                        Aucune info de contact
-                      </p>
-                    )}
-                  </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-8 w-8 shrink-0"
-                    onClick={() => startEditContact(c)}
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
