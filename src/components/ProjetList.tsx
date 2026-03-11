@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { api } from "@/lib/api";
 import type { Projet, Transaction } from "@/types";
-import { FolderOpen, Plus, Pencil } from "lucide-react";
+import { FolderOpen, Plus, Pencil, Trash2 } from "lucide-react";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
@@ -108,6 +108,14 @@ export default function ProjetList() {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleDelete = async () => {
+    if (!editingId) return;
+    if (!confirm("Supprimer ce projet ? Les transactions ne seront pas supprimees mais ne seront plus liees a ce projet.")) return;
+    await api.delete(`/api/projets?id=${editingId}`);
+    resetForm();
+    loadProjets();
   };
 
   const openProjet = async (p: Projet) => {
@@ -306,14 +314,22 @@ export default function ProjetList() {
                 />
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-2">
-              <Button variant="outline" onClick={resetForm}>Annuler</Button>
-              <Button
-                onClick={handleSave}
-                disabled={saving || !formCode || !formNom}
-              >
-                {saving ? "Enregistrement..." : editingId ? "Modifier" : "Creer"}
-              </Button>
+            <div className="flex justify-between pt-2">
+              {editingId ? (
+                <Button variant="destructive" size="sm" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Supprimer
+                </Button>
+              ) : <div />}
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={resetForm}>Annuler</Button>
+                <Button
+                  onClick={handleSave}
+                  disabled={saving || !formCode || !formNom}
+                >
+                  {saving ? "Enregistrement..." : editingId ? "Modifier" : "Creer"}
+                </Button>
+              </div>
             </div>
           </div>
         </DialogContent>

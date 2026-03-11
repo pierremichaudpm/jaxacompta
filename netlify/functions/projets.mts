@@ -48,6 +48,22 @@ export default async (req: Request, _context: Context) => {
     });
   }
 
+  if (req.method === "DELETE") {
+    const id = new URL(req.url).searchParams.get("id");
+    if (!id) {
+      return new Response(JSON.stringify({ error: "ID requis" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+    // Unlink transactions first, then delete
+    await sql`UPDATE transactions SET projet_id = NULL WHERE projet_id = ${id}`;
+    await sql`DELETE FROM projets WHERE id = ${id}`;
+    return new Response(JSON.stringify({ ok: true }), {
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
   return new Response("Method not allowed", { status: 405 });
 };
 
