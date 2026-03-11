@@ -38,7 +38,7 @@ export default async (req: Request, _context: Context) => {
   if (req.method === "PUT") {
     const data = await req.json();
     const result = await sql`
-      UPDATE projets SET nom=${data.nom}, statut=${data.statut}, compte_dedie=${data.compte_dedie},
+      UPDATE projets SET code=${data.code}, nom=${data.nom}, statut=${data.statut}, compte_dedie=${data.compte_dedie},
         date_debut=${data.date_debut}, date_fin=${data.date_fin}, budget=${data.budget}
       WHERE id=${data.id}
       RETURNING *
