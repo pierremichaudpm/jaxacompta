@@ -242,7 +242,7 @@ export default function TransactionList() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-4 min-w-0">
           {/* Filters */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
             <div className="relative col-span-2">

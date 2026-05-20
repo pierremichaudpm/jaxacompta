@@ -525,7 +525,7 @@ export default function Factures() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="min-w-0">
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>

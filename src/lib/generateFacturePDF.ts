@@ -47,12 +47,12 @@ export function generateFacturePDF(data: FacturePDFData): jsPDF {
 
   // Logo (replaces company name text)
   if (data.branding === "micho") {
-    doc.addImage(LOGO_MICHO_BASE64, "PNG", 14, 10, 50, 15); // Adjusted height for aspect ratio
+    doc.addImage(LOGO_MICHO_BASE64, "PNG", 14, 10, 66, 13.7); // 580×120px → ratio 4.83:1
     doc.setFontSize(8);
     doc.setFont("helvetica", "italic");
     doc.text("par Jaxa Production inc.", 14, 30);
   } else {
-    doc.addImage(LOGO_BASE64, "PNG", 14, 10, 50, 30);
+    doc.addImage(LOGO_BASE64, "PNG", 14, 10, 70, 30); // 279×120px → ratio 2.325:1
   }
 
   // Invoice number (right side)
@@ -74,6 +74,7 @@ export function generateFacturePDF(data: FacturePDFData): jsPDF {
 
   // Right side: date, client, project
   let ry = 34;
+  const maxValWidth = pageWidth - (rightCol + 42) - 6; // available width before right margin
   doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.text("Date de la facture :", rightCol, ry);
@@ -84,14 +85,18 @@ export function generateFacturePDF(data: FacturePDFData): jsPDF {
   doc.setFont("helvetica", "bold");
   doc.text("Facturer \u00e0 :", rightCol, ry);
   doc.setFont("helvetica", "normal");
-  doc.text(data.client_nom, rightCol + 42, ry);
-  ry += 5;
+  const clientNameLines = doc.splitTextToSize(data.client_nom, maxValWidth);
+  doc.text(clientNameLines, rightCol + 42, ry);
+  ry += clientNameLines.length * 4.5;
 
   if (data.client_adresse) {
     const addrLines = data.client_adresse.split("\n");
     for (const line of addrLines) {
-      doc.text(line.trim(), rightCol + 42, ry);
-      ry += 4.5;
+      const trimLine = line.trim();
+      if (!trimLine) continue;
+      const wrappedLines = doc.splitTextToSize(trimLine, maxValWidth);
+      doc.text(wrappedLines, rightCol + 42, ry);
+      ry += wrappedLines.length * 4.5;
     }
   }
 
@@ -104,8 +109,9 @@ export function generateFacturePDF(data: FacturePDFData): jsPDF {
     doc.setFont("helvetica", "bold");
     doc.text("Projet", rightCol, ry);
     doc.setFont("helvetica", "normal");
-    doc.text(data.projet_nom, rightCol + 42, ry);
-    ry += 5;
+    const projLines = doc.splitTextToSize(data.projet_nom, maxValWidth);
+    doc.text(projLines, rightCol + 42, ry);
+    ry += projLines.length * 4.5;
   }
 
   if (data.date_echeance) {
