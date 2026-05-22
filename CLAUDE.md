@@ -12,9 +12,9 @@ Application web comptable pour JAXA Production Inc. React SPA avec Netlify Funct
 | Backend | Netlify Functions (.mts) + @netlify/neon (PostgreSQL) + @netlify/blobs |
 | OCR | Anthropic API (claude-sonnet-4-6) |
 | PDF | jsPDF + jspdf-autotable |
-| Hosting | Netlify (site ID: `d4fe219f-0361-4e43-a9f7-90c5bfd44529`) |
+| Hosting | Netlify (site: `comptajaxa`, compte `pierre.michaud@jaxa.ca`) |
 | Repo | `git@github.com:pierremichaudpm/jaxacompta.git` (branch: main) |
-| URL | https://jaxa-compta.netlify.app |
+| URL | https://comptajaxa.netlify.app |
 
 ## Structure
 
@@ -49,12 +49,18 @@ jaxa-compta/
 ## Deploy
 
 ```bash
-# Build + deploy manuel
-npm run build && npx netlify deploy --prod --dir=dist
-
 # Auto-deploy : push to main → Netlify builds from GitHub
 git push origin main
+
+# Build + deploy manuel (authentification compte pierre.michaud@jaxa.ca)
+npm run build && npx netlify deploy --prod --dir=dist
 ```
+
+## Neon DB
+
+Projet : `young-silence-09986893` — AWS US East 2 (Ohio)
+Acces : console.neon.tech (compte Pierre, Free tier)
+**Important** : la DB est independante de Netlify. Si le compte Netlify change, la DB survit.
 
 ## Migrations
 

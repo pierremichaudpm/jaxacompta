@@ -1,5 +1,63 @@
 # WORKING_LOG — JAXA Compta
 
+## Session 2026-05-22
+
+### Progres
+
+1. **Migration d'hebergement Netlify suite a suppression de compte sans preavis**
+   - Ancien site : `jaxa-compta.netlify.app` (compte `pmicho@pm.me`) — supprime sans avertissement
+   - Nouveau site : `comptajaxa.netlify.app` (compte `pierre.michaud@jaxa.ca`)
+   - Connexion GitHub → auto-deploy sur push vers main
+   - Zéro perte de données : la DB Neon était indépendante de Netlify
+
+2. **Recuperation de la base de données Neon**
+   - Projet Neon `young-silence-09986893` toujours accessible sur console.neon.tech
+   - 32.2 MB de données intactes, derniere activite 2 jours avant la migration
+   - Connection string reconfigurée manuellement comme variable d'environnement
+
+3. **Reconfiguration des variables d'environnement sur le nouveau site**
+   - `NETLIFY_DATABASE_URL` : connection string Neon (ep-empty-block-ae3yh5th)
+   - `APP_PASSWORD` : mot de passe de connexion a l'app
+   - `ANTHROPIC_API_KEY` : cle API Claude pour l'OCR
+
+4. **Mise a jour CLAUDE.md**
+   - URL → `https://comptajaxa.netlify.app`
+   - Nouvelle section Neon DB avec nom du projet et note d'independance
+   - Section Deploy simplifiee
+
+### Decisions techniques
+
+- **Garder la meme DB Neon** : zero migration de donnees necessaire, connexion par URL directe sans passer par l'extension Netlify Neon
+- **Compte Netlify** : `pierre.michaud@jaxa.ca` (compte JAXA qui heberge aussi jaxapatsy, jaxamail, etc.)
+- **Ne pas utiliser l'extension Netlify Neon** sur le nouveau site : `NETLIFY_DATABASE_URL` configurée comme variable manuelle standard pour eviter toute dependance a l'extension
+
+### Problemes rencontres et resolus
+
+1. **Compte Netlify `pmicho@pm.me` supprime sans preavis**
+   - Toutes les variables d'environnement perdues avec le compte
+   - Resolution : recuperation depuis neon.tech + re-saisie manuelle des secrets
+
+2. **`NETLIFY_DATABASE_URL` invisible via CLI**
+   - L'extension Neon injecte la variable hors du systeme standard → `netlify env:list` retournait vide
+   - Resolution : recuperation directe depuis la console Neon
+
+3. **CLI netlify pointe vers un site fantome apres suppression du compte**
+   - `netlify link` retournait `undefined` car le site original n'existait plus
+   - Resolution : `netlify unlink` puis `netlify link --name comptajaxa`
+
+### Lecon apprise
+
+**La DB Neon est independante de Netlify.** Toujours noter la connection string Neon separément des credentials Netlify — c'est ce qui a permis la recuperation sans perte de donnees.
+
+### Prochaines etapes
+
+- [ ] Ajouter le champ `notes` dans le payload de `handleCreate` (formNotes non envoye a l'API)
+- [ ] Tester creation facture Studio Micho (branding "micho") — verifier logo PDF apres les commits recents de branding
+- [ ] Re-editer les factures existantes creees avec branding "micho" pour corriger en DB
+- [ ] Remplacer les `alert()` par des toasts shadcn/ui
+
+---
+
 ## Session 2026-03-17
 
 ### Progres
