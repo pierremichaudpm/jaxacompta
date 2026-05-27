@@ -195,21 +195,74 @@ export default function TransactionList() {
   };
 
   const exportExcel = () => {
-    const data = rows.map((r) => ({
-      Date: r.date_transaction,
-      Type: r.type,
-      Description: r.description,
-      Catégorie: r.categorie_nom,
-      Projet: r.projet_code,
-      Contact: r.contact_nom,
-      Compte: r.compte_nom,
-      "Montant HT": r.montant_ht,
-      TPS: r.tps,
-      TVQ: r.tvq,
-      "Total TTC": r.total_ttc,
-      Paiement: r.mode_paiement,
-    }));
-    const ws = XLSX.utils.json_to_sheet(data);
+    const MONEY_FMT = '#,##0.00 $';
+    const headers = [
+      "Date", "N° pièce", "Type", "Description", "Catégorie", "Projet",
+      "Fournisseur / Client", "Compte bancaire", "Revenus HT",
+      "Dépenses HT", "TPS (5 %)", "TVQ (9,975 %)", "Total TTC",
+      "Mode de paiement",
+    ];
+    const aoa: (string | number | null)[][] = [headers];
+    const firstDataRow = 2;
+
+    for (const r of rows) {
+      const isRevenu = r.type === "revenu";
+      const ht = Number(r.montant_ht) || 0;
+      const tps = Number(r.tps) || 0;
+      const tvq = Number(r.tvq) || 0;
+      aoa.push([
+        r.date_transaction?.slice(0, 10) || "",
+        r.numero || "",
+        r.type,
+        r.description || "",
+        r.categorie_nom || "",
+        r.projet_code || "",
+        r.contact_nom || "",
+        r.compte_nom || "",
+        isRevenu ? ht : null,
+        !isRevenu ? ht : null,
+        tps || null,
+        tvq || null,
+        0,
+        r.mode_paiement || "",
+      ]);
+    }
+
+    const lastDataRow = firstDataRow + rows.length - 1;
+    const totalRow = lastDataRow + 2;
+
+    aoa.push([]);
+    aoa.push([
+      "TOTAUX", null, null, null, null, null, null, null,
+      0, 0, 0, 0, 0, null,
+    ]);
+
+    const ws = XLSX.utils.aoa_to_sheet(aoa);
+
+    for (let i = 0; i < rows.length; i++) {
+      const r = firstDataRow + i;
+      ws[`M${r}`] = { t: "n", f: `N(I${r})+N(J${r})+N(K${r})+N(L${r})` };
+    }
+
+    ws[`I${totalRow}`] = { t: "n", f: `SUMIF(C${firstDataRow}:C${lastDataRow},"revenu",I${firstDataRow}:I${lastDataRow})` };
+    ws[`J${totalRow}`] = { t: "n", f: `SUMIF(C${firstDataRow}:C${lastDataRow},"dépense",J${firstDataRow}:J${lastDataRow})` };
+    ws[`K${totalRow}`] = { t: "n", f: `SUM(K${firstDataRow}:K${lastDataRow})` };
+    ws[`L${totalRow}`] = { t: "n", f: `SUM(L${firstDataRow}:L${lastDataRow})` };
+    ws[`M${totalRow}`] = { t: "n", f: `SUM(M${firstDataRow}:M${lastDataRow})` };
+
+    for (const col of ["I", "J", "K", "L", "M"]) {
+      for (let r = firstDataRow; r <= totalRow; r++) {
+        const cell = ws[`${col}${r}`];
+        if (cell && (cell.t === "n" || cell.f)) cell.z = MONEY_FMT;
+      }
+    }
+
+    ws["!cols"] = [
+      { wch: 12 }, { wch: 12 }, { wch: 10 }, { wch: 55 }, { wch: 25 },
+      { wch: 15 }, { wch: 30 }, { wch: 28 }, { wch: 14 }, { wch: 14 },
+      { wch: 12 }, { wch: 14 }, { wch: 14 }, { wch: 18 },
+    ];
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Transactions");
     XLSX.writeFile(
