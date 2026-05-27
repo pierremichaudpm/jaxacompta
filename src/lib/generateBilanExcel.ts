@@ -32,6 +32,19 @@ function formatDate(d: string) {
   return d.slice(0, 10);
 }
 
+const MONEY_FMT = '#,##0.00 $';
+
+function formatMoneyCols(ws: XLSX.WorkSheet, cols: string[], startRow: number, endRow: number) {
+  for (const col of cols) {
+    for (let r = startRow; r <= endRow; r++) {
+      const cell = ws[`${col}${r}`];
+      if (cell && (cell.t === "n" || cell.f)) {
+        cell.z = MONEY_FMT;
+      }
+    }
+  }
+}
+
 export function generateBilanExcel(opts: BilanOptions) {
   const wb = XLSX.utils.book_new();
   const rows = opts.rows || [];
@@ -246,6 +259,8 @@ function buildTransactionsSheet(
   ws[`H${netRow}`] = { t: "n", f: `H${revRow}-I${depRow}` };
   ws[`L${netRow}`] = { t: "n", f: `L${revRow}-L${depRow}` };
 
+  formatMoneyCols(ws, ["H", "I", "J", "K", "L"], firstDataRow, netRow);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 12 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 12 } },
@@ -253,6 +268,8 @@ function buildTransactionsSheet(
   ];
 
   ws["!cols"] = COL_WIDTHS;
+
+  ws["!views"] = [{ state: "frozen", xSplit: 0, ySplit: 5, topLeftCell: "A6", activePane: "bottomLeft" }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Transactions");
 
@@ -329,6 +346,8 @@ function buildSommaireSheet(
   ws["C24"] = { t: "n", f: `Transactions!L${depRow}` };
   ws["C25"] = { t: "n", f: `Transactions!L${revRow}-Transactions!L${depRow}` };
 
+  formatMoneyCols(ws, ["C"], 5, 25);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
@@ -397,6 +416,8 @@ function buildCategorieSheet(
   ws[`E${totalRow}`] = { t: "n", f: `SUM(E${firstCatRow}:E${lastCatRow})` };
   ws[`F${totalRow}`] = { t: "n", f: `SUM(F${firstCatRow}:F${lastCatRow})` };
 
+  formatMoneyCols(ws, ["C", "D", "E", "F"], firstCatRow, totalRow);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
@@ -410,6 +431,8 @@ function buildCategorieSheet(
     { wch: 14 },
     { wch: 14 },
   ];
+
+  ws["!views"] = [{ state: "frozen", xSplit: 0, ySplit: 4, topLeftCell: "A5", activePane: "bottomLeft" }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Par catégorie");
 }
@@ -470,6 +493,8 @@ function buildSommaireFromTotaux(
 
   const ws = XLSX.utils.aoa_to_sheet(data);
 
+  formatMoneyCols(ws, ["C"], 5, 25);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 3 } },
@@ -515,6 +540,9 @@ function buildCategorieSheetFromData(
 
   const ws = XLSX.utils.aoa_to_sheet(data);
 
+  const totalRowIdx = 4 + parCategorie.length + 1;
+  formatMoneyCols(ws, ["C", "D", "E", "F"], 5, totalRowIdx);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 5 } },
     { s: { r: 1, c: 0 }, e: { r: 1, c: 5 } },
@@ -528,6 +556,8 @@ function buildCategorieSheetFromData(
     { wch: 14 },
     { wch: 14 },
   ];
+
+  ws["!views"] = [{ state: "frozen", xSplit: 0, ySplit: 4, topLeftCell: "A5", activePane: "bottomLeft" }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Par catégorie");
 }
@@ -557,6 +587,9 @@ function buildParMoisSheet(
 
   const ws = XLSX.utils.aoa_to_sheet(data);
 
+  const totalMoisRow = 3 + parMois.length + 1;
+  formatMoneyCols(ws, ["B", "C", "D"], 4, totalMoisRow);
+
   ws["!merges"] = [
     { s: { r: 0, c: 0 }, e: { r: 0, c: 3 } },
   ];
@@ -567,6 +600,8 @@ function buildParMoisSheet(
     { wch: 16 },
     { wch: 16 },
   ];
+
+  ws["!views"] = [{ state: "frozen", xSplit: 0, ySplit: 3, topLeftCell: "A4", activePane: "bottomLeft" }];
 
   XLSX.utils.book_append_sheet(wb, ws, "Par mois");
 }
