@@ -21,9 +21,9 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Download, Mail } from "lucide-react";
 import { api } from "@/lib/api";
 import type { Transaction, Projet, CompteBancaire } from "@/types";
-import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
+import { generateBilanExcel } from "@/lib/generateBilanExcel";
 
 const fmt = (n: number) =>
   new Intl.NumberFormat("fr-CA", { style: "currency", currency: "CAD" }).format(
@@ -144,40 +144,21 @@ export default function Rapports() {
   const exportExcel = () => {
     if (!data) return;
     const d = data as Record<string, unknown>;
-    const wb = XLSX.utils.book_new();
 
-    if (d.rows && Array.isArray(d.rows)) {
-      const ws = XLSX.utils.json_to_sheet(
-        (d.rows as Transaction[]).map((r) => ({
-          Date: r.date_transaction,
-          Type: r.type,
-          Description: r.description,
-          Catégorie: r.categorie_nom,
-          Contact: r.contact_nom,
-          "Montant HT": r.montant_ht,
-          TPS: r.tps,
-          TVQ: r.tvq,
-          "Total TTC": r.total_ttc,
-        })),
-      );
-      XLSX.utils.book_append_sheet(wb, ws, "Transactions");
-    }
-
-    if (d.parCategorie && Array.isArray(d.parCategorie)) {
-      const ws = XLSX.utils.json_to_sheet(
-        d.parCategorie as Record<string, unknown>[],
-      );
-      XLSX.utils.book_append_sheet(wb, ws, "Par catégorie");
-    }
-
-    if (d.parMois && Array.isArray(d.parMois)) {
-      const ws = XLSX.utils.json_to_sheet(
-        d.parMois as Record<string, unknown>[],
-      );
-      XLSX.utils.book_append_sheet(wb, ws, "Par mois");
-    }
-
-    XLSX.writeFile(wb, `rapport_${reportType}_${mois || annee}.xlsx`);
+    generateBilanExcel({
+      reportType,
+      rows: (d.rows || []) as Transaction[],
+      projets,
+      comptes,
+      projetId,
+      mois,
+      trimestre,
+      annee,
+      compte,
+      parCategorie: d.parCategorie as { nom: string; type: string; total: number; tps?: number; tvq?: number; montant_ht?: number }[] | undefined,
+      parMois: d.parMois as { mois: string; revenus: number; depenses: number }[] | undefined,
+      totaux: d.totaux as Record<string, number> | undefined,
+    });
   };
 
   const sendToLGCPA = () => {
