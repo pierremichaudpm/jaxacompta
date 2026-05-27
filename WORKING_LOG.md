@@ -1,5 +1,50 @@
 # WORKING_LOG — JAXA Compta
 
+## Session 2026-05-27
+
+### Progres
+
+1. **Refonte de l'export Excel des rapports — format bilan comptable professionnel**
+   - Fichier reference : `FIS_Bilan_Comptable.xlsx` (bilan La Fissure) fourni comme modele
+   - Nouveau fichier `src/lib/generateBilanExcel.ts` — generateur Excel 3 onglets
+   - Remplacement de l'ancien export plat dans `Rapports.tsx`
+
+2. **Structure du nouveau bilan Excel**
+   - **Onglet Transactions** : en-tete projet/periode + JAXA Production Inc., colonnes separees Revenus HT / Depenses HT / TPS (5%) / TVQ (9,975%) / Total TTC / Mode de paiement, sous-totaux depenses/revenus, solde net
+   - **Onglet Sommaire comptable** : 5 sections (resultats HT, credits de taxes recuperables CTI/RTI, taxes percues sur revenus, position nette de taxes, mouvements de tresorerie TTC)
+   - **Onglet Par categorie** : ventilation par categorie comptable avec Montant HT / TPS / TVQ / Total TTC, total general — "pour faciliter les ecritures dans le grand livre"
+
+3. **Adaptation par type de rapport**
+   - Projet / Mensuel : 3 onglets complets avec toutes les transactions
+   - Trimestriel taxes / Annuel : Sommaire + Par categorie (+ Par mois pour annuel)
+   - Noms de fichiers clairs : `{CODE}_Bilan_Comptable.xlsx`, `Bilan_Comptable_{YYYY-MM}.xlsx`, etc.
+
+### Decisions techniques
+
+- **Calcul des totaux cote client** : tous les montants (HT, TPS, TVQ, TTC par type) sont agreges a partir des rows retournees par l'API, sans modification du backend — evite un deploy Netlify Functions
+- **Pas de styling Excel** : la version communautaire de SheetJS ne supporte pas les styles (bold, couleurs, bordures). Le contenu et la structure sont corrects ; le comptable peut formater dans Excel si necessaire. Alternative future : migrer vers `exceljs` pour le styling
+- **Cellules fusionnees + largeurs de colonnes** : utilisation de `!merges` et `!cols` de SheetJS pour les titres et la lisibilite
+- **Fichier separe** (`generateBilanExcel.ts`) : meme pattern que `generateFacturePDF.ts` — separation generation/composant
+
+### Problemes rencontres et resolus
+
+1. **Fichier Excel binaire non lisible directement**
+   - Lecture via `node` + module `xlsx` deja present dans `node_modules`
+   - Extraction des 3 onglets et de la structure complete du fichier reference
+
+2. **Bug existant repere (non corrige)** : la requete `totaux` du rapport mensuel ne filtre pas par `compte` quand un compte specifique est selectionne — les totaux affichent tous les comptes meme si un filtre est actif
+
+### Prochaines etapes
+
+- [ ] Tester l'export Excel en production avec des donnees reelles (projet La Fissure, mensuel)
+- [ ] Corriger le bug du filtre compte dans les totaux du rapport mensuel (`rapports.mts` ligne 44-54)
+- [ ] Envisager migration vers `exceljs` pour ajouter du styling (bold headers, bordures, couleurs)
+- [ ] Ajouter le champ `notes` dans le payload de `handleCreate` (formNotes non envoye a l'API)
+- [ ] Tester creation facture Studio Micho (branding "micho") — verifier logo PDF
+- [ ] Remplacer les `alert()` par des toasts shadcn/ui
+
+---
+
 ## Session 2026-05-22
 
 ### Progres

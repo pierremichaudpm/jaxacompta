@@ -12,6 +12,7 @@ Application web comptable pour JAXA Production Inc. React SPA avec Netlify Funct
 | Backend | Netlify Functions (.mts) + @netlify/neon (PostgreSQL) + @netlify/blobs |
 | OCR | Anthropic API (claude-sonnet-4-6) |
 | PDF | jsPDF + jspdf-autotable |
+| Excel | SheetJS (xlsx) — export bilan comptable multi-onglets |
 | Hosting | Netlify (site: `comptajaxa`, compte `pierre.michaud@jaxa.ca`) |
 | Repo | `git@github.com:pierremichaudpm/jaxacompta.git` (branch: main) |
 | URL | https://comptajaxa.netlify.app |
@@ -23,7 +24,7 @@ jaxa-compta/
 ├── src/
 │   ├── components/       # React components (Dashboard, Factures, ContactList, etc.)
 │   ├── components/ui/    # shadcn/ui primitives
-│   ├── lib/              # api.ts, generateFacturePDF.ts, companyInfo.ts, logo*Base64.ts
+│   ├── lib/              # api.ts, generateFacturePDF.ts, generateBilanExcel.ts, companyInfo.ts, logo*Base64.ts
 │   └── types/index.ts    # Shared TypeScript interfaces
 ├── netlify/functions/    # Backend API (.mts files)
 │   ├── lib/auth.ts       # Shared auth middleware
@@ -90,6 +91,7 @@ c.connect().then(() => c.query('SELECT 1')).then(r => { console.log(r.rows); c.e
 - **Branding** : `branding VARCHAR(50) DEFAULT 'jaxa'` — valeurs 'jaxa' ou 'micho'
 - **Contacts dans Factures** : sous-vue via `showContacts` early return (pas un onglet separe)
 - **PDF** : genere cote client via `generateFacturePDF()`, separe de la sauvegarde API
+- **Excel bilan** : genere cote client via `generateBilanExcel()` — 3 onglets (Transactions, Sommaire comptable, Par categorie), format professionnel pour le comptable
 
 ## Contexte global
 Voir ~/Documents/CONTEXT.md pour le profil complet,
