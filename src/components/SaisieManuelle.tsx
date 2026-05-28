@@ -48,13 +48,13 @@ const SHORTCUTS: Shortcut[] = [
     },
   },
   {
-    label: "Frais banque Cpte 21 (FIS)",
+    label: "Frais banque Cpte 21 (Prod)",
     data: {
       type: "dépense",
-      description: "Frais bancaires — Compte 2-21 La Fissure",
+      description: "Frais bancaires — Compte 2-21 Production",
       categorie_id: 5, // Frais bancaires
       projet_id: 6, // FIS — La Fissure
-      compte_id: 2, // Cpte 2-21 La Fissure
+      compte_id: 2, // Cpte 2-21 Production
       mode_paiement: "Débit",
       taxable: false,
     },
