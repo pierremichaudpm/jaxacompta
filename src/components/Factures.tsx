@@ -210,6 +210,14 @@ export default function Factures() {
   };
 
   const sousTotal = computedLignes().reduce((sum, l) => sum + l.montant, 0);
+  // Une facture est valide si au moins une ligne a un coût unitaire saisi,
+  // meme si le total net vaut 0 (lignes qui se compensent volontairement).
+  const hasLigneSaisie = formLignes.some(
+    (l) =>
+      !l.isHeader &&
+      l.cout_unitaire.trim() !== "" &&
+      !isNaN(parseFloat(l.cout_unitaire)),
+  );
   const tpsAmount = formTaxable ? Math.round(sousTotal * 0.05 * 100) / 100 : 0;
   const tvqAmount = formTaxable
     ? Math.round(sousTotal * 0.09975 * 100) / 100
@@ -1073,11 +1081,11 @@ export default function Factures() {
 
             {/* Actions */}
             <div className="space-y-2">
-              {!saving && (!formClientId || !formNumero || sousTotal === 0) && (
+              {!saving && (!formClientId || !formNumero || !hasLigneSaisie) && (
                 <p className="text-xs text-red-500 text-right">
                   {!formClientId ? "Client requis. " : ""}
                   {!formNumero ? "N° facture requis. " : ""}
-                  {sousTotal === 0 ? "Montant requis (remplir Coût unit.)." : ""}
+                  {!hasLigneSaisie ? "Montant requis (remplir Coût unit.)." : ""}
                 </p>
               )}
               <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
@@ -1087,7 +1095,7 @@ export default function Factures() {
                 <Button
                   onClick={handleCreate}
                   disabled={
-                    saving || !formClientId || !formNumero || sousTotal === 0
+                    saving || !formClientId || !formNumero || !hasLigneSaisie
                   }
                 >
                   <Download className="h-4 w-4 mr-2" />
