@@ -159,9 +159,12 @@ export default function TransactionList() {
     fetchData();
   }, [fetchData]);
 
-  const handleDelete = async (id: number) => {
-    if (!confirm("Supprimer cette transaction ?")) return;
-    await api.delete(`/api/transactions?id=${id}`);
+  const handleDelete = async (tx: Transaction) => {
+    const message = tx.id_transfert
+      ? "Cette transaction est un transfert : les DEUX écritures liées seront supprimées. Continuer ?"
+      : "Supprimer cette transaction ?";
+    if (!confirm(message)) return;
+    await api.delete(`/api/transactions?id=${tx.id}`);
     fetchData();
   };
 
@@ -525,7 +528,7 @@ export default function TransactionList() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-red-600"
-                            onClick={() => handleDelete(tx.id)}
+                            onClick={() => handleDelete(tx)}
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>

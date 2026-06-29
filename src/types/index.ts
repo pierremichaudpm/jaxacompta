@@ -73,6 +73,9 @@ export interface Transaction {
   updated_at: string;
   lignes_facture: string | null;
   branding?: "jaxa" | "micho";
+  compte_destination_id: number | null;
+  id_transfert: number | null;
+  is_transfert: boolean;
   // Joined fields
   categorie_nom?: string;
   projet_code?: string;

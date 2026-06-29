@@ -223,10 +223,23 @@ export default async (req: Request, _context: Context) => {
         headers: { "Content-Type": "application/json" },
       });
     }
-    await sql`DELETE FROM transactions WHERE id = ${Number(id)}`;
-    return new Response(JSON.stringify({ success: true }), {
-      headers: { "Content-Type": "application/json" },
-    });
+    // Supprime la ligne ciblée et, si c'est une patte de transfert, sa paire.
+    // La sous-requête ne renvoie un id_transfert que pour une patte de transfert ;
+    // pour une transaction normale elle vaut NULL (id_transfert = NULL jamais vrai),
+    // donc seule la ligne id = ${id} est supprimée.
+    const deleted = await sql`
+      DELETE FROM transactions
+      WHERE id = ${Number(id)}
+         OR id_transfert = (
+           SELECT id_transfert FROM transactions
+           WHERE id = ${Number(id)} AND id_transfert IS NOT NULL
+         )
+      RETURNING id
+    `;
+    return new Response(
+      JSON.stringify({ success: true, deleted: deleted.length }),
+      { headers: { "Content-Type": "application/json" } },
+    );
   }
 
   return new Response("Method not allowed", { status: 405 });
