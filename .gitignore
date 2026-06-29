@@ -4,3 +4,8 @@ dist
 *.log
 .env
 .env.local
+
+# Sauvegardes DB — données comptables, jamais versionnées
+*.sql.backup
+backups/
+*.dump
