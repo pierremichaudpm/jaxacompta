@@ -73,6 +73,7 @@ Règles :
 
   if (!response.ok) {
     const errBody = await response.text();
+    console.error(response.status, errBody);
     return new Response(
       JSON.stringify({
         error: `Anthropic API ${response.status}`,
