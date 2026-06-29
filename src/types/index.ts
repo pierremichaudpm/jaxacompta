@@ -93,6 +93,7 @@ export interface TransactionFormData {
   projet_id: number | null;
   contact_id: number | null;
   compte_id: number | null;
+  compte_destination_id: number | null;
   mode_paiement: string;
   montant_ht: number;
   tps: number;

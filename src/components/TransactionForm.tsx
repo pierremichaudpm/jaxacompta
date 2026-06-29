@@ -73,6 +73,7 @@ export default function TransactionForm({
     projet_id: null,
     contact_id: null,
     compte_id: null,
+    compte_destination_id: null,
     mode_paiement: "Mastercard",
     montant_ht: 0,
     tps: 0,
@@ -97,6 +98,7 @@ export default function TransactionForm({
   const [newContactType, setNewContactType] = useState("fournisseur");
   const [savingContact, setSavingContact] = useState(false);
   const [manualTax, setManualTax] = useState(false);
+  const [transferError, setTransferError] = useState<string | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -114,7 +116,13 @@ export default function TransactionForm({
 
   useEffect(() => {
     if (initialData) {
-      setForm((prev) => ({ ...prev, ...initialData }));
+      setForm((prev) => {
+        const merged = { ...prev, ...initialData };
+        // Invariant 1 sur la voie preset (ex. Transfert interne de SaisieManuelle) :
+        // si le preset pose un type non-transfert, compte_destination_id reste null.
+        if (merged.type !== "transfert") merged.compte_destination_id = null;
+        return merged;
+      });
     }
   }, [initialData]);
 
@@ -125,6 +133,12 @@ export default function TransactionForm({
     setForm((prev) => {
       const next = { ...prev, [key]: value };
       const round2 = (n: number) => Math.round(n * 100) / 100;
+
+      // Invariant 1 : hors transfert, jamais de compte destination dans l'état
+      // -> form brut envoyé au POST ne portera compte_destination_id que pour un transfert.
+      if (key === "type" && next.type !== "transfert") {
+        next.compte_destination_id = null;
+      }
 
       if (!manualTax) {
         // Mode auto : calcul TPS/TVQ/TTC depuis le HT
@@ -154,6 +168,7 @@ export default function TransactionForm({
       return next;
     });
     setSaved(false);
+    setTransferError(null);
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -206,6 +221,21 @@ export default function TransactionForm({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Invariant 2 : un transfert ne part pas incomplet (destination requise et ≠ source).
+    if (form.type === "transfert") {
+      if (!form.compte_destination_id) {
+        setTransferError("Un transfert exige un compte destination.");
+        return;
+      }
+      if (form.compte_destination_id === form.compte_id) {
+        setTransferError(
+          "Le compte destination doit être différent du compte source.",
+        );
+        return;
+      }
+    }
+    setTransferError(null);
 
     // Duplicate check (only for new transactions)
     if (!editId && !bypassDuplicate && form.total_ttc) {
@@ -401,6 +431,32 @@ export default function TransactionForm({
           </Select>
         </div>
       </div>
+
+      {/* Compte destination — transfert uniquement */}
+      {form.type === "transfert" && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label>Compte destination</Label>
+            <Select
+              value={form.compte_destination_id?.toString() || ""}
+              onValueChange={(v) =>
+                updateField("compte_destination_id", Number(v))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Choisir..." />
+              </SelectTrigger>
+              <SelectContent>
+                {comptes.map((c) => (
+                  <SelectItem key={c.id} value={c.id.toString()}>
+                    {c.nom}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+      )}
 
       {/* Row 4: Paiement + Facture */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -606,6 +662,12 @@ export default function TransactionForm({
               Annuler
             </Button>
           </div>
+        </div>
+      )}
+
+      {transferError && (
+        <div className="rounded border border-red-300 bg-red-50 p-2 text-sm text-red-700">
+          {transferError}
         </div>
       )}
 
