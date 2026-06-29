@@ -95,17 +95,63 @@ export default async (req: Request, _context: Context) => {
 
   if (req.method === "POST") {
     const data = await req.json();
+
+    // Transfert : déclenché par compte_destination_id renseigné (pas par type ni catégorie).
+    // Génère la paire source/miroir uniquement si pas déjà apparié (idempotence : !id_transfert).
+    if (data.compte_destination_id != null && !data.id_transfert) {
+      const montant = data.total_ttc;
+      // Une seule instruction = atomique (le driver Neon HTTP ne fait pas de BEGIN/COMMIT
+      // multi-requêtes). On pré-alloue l'id de la source via la séquence existante pour poser
+      // id_transfert sur les deux pattes dès l'insert. La miroir est insérée ici directement,
+      // sans repasser par ce handler -> pas de re-déclenchement.
+      const pair = await sql`
+        WITH ids AS MATERIALIZED (
+          SELECT nextval(pg_get_serial_sequence('transactions', 'id')) AS sid
+        ),
+        source AS (
+          INSERT INTO transactions
+            (id, id_transfert, is_transfert, date_transaction, type, description,
+             categorie_id, compte_id, compte_destination_id,
+             montant_ht, tps, tvq, total_ttc, taxable, contact_id)
+          SELECT ids.sid, ids.sid, true, ${data.date_transaction}, 'dépense', ${data.description},
+                 10, ${data.compte_id}, ${data.compte_destination_id},
+                 ${montant}, 0, 0, ${montant}, false, NULL
+          FROM ids
+          RETURNING *
+        ),
+        mirror AS (
+          INSERT INTO transactions
+            (id_transfert, is_transfert, date_transaction, type, description,
+             categorie_id, compte_id, compte_destination_id,
+             montant_ht, tps, tvq, total_ttc, taxable, contact_id)
+          SELECT ids.sid, true, ${data.date_transaction}, 'revenu', ${data.description},
+                 10, ${data.compte_destination_id}, ${data.compte_id},
+                 ${montant}, 0, 0, ${montant}, false, NULL
+          FROM ids
+          RETURNING id
+        )
+        SELECT * FROM source
+      `;
+
+      return new Response(JSON.stringify(pair[0]), {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const result = await sql`
       INSERT INTO transactions
         (date_transaction, type, numero, description, categorie_id, projet_id,
          contact_id, compte_id, mode_paiement, montant_ht, tps, tvq, total_ttc,
          taxable, statut_facture, numero_facture, piece_jointe_url,
-         ocr_source, ocr_confiance, notes)
+         ocr_source, ocr_confiance, notes,
+         compte_destination_id, is_transfert, id_transfert)
       VALUES (${data.date_transaction}, ${data.type}, ${data.numero}, ${data.description},
               ${data.categorie_id}, ${data.projet_id}, ${data.contact_id}, ${data.compte_id},
               ${data.mode_paiement}, ${data.montant_ht}, ${data.tps}, ${data.tvq}, ${data.total_ttc},
               ${data.taxable}, ${data.statut_facture}, ${data.numero_facture},
-              ${data.piece_jointe_url}, ${data.ocr_source}, ${data.ocr_confiance}, ${data.notes})
+              ${data.piece_jointe_url}, ${data.ocr_source}, ${data.ocr_confiance}, ${data.notes},
+              ${data.compte_destination_id ?? null}, ${data.is_transfert ?? false}, ${data.id_transfert ?? null})
       RETURNING *
     `;
 
