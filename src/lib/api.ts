@@ -59,7 +59,7 @@ export function isAuthenticated(): boolean {
   const token = getToken();
   if (!token) return false;
   try {
-    const payload = JSON.parse(atob(token));
+    const payload = JSON.parse(atob(token.split('.')[0]));
     return payload.authenticated && payload.exp > Date.now();
   } catch {
     return false;

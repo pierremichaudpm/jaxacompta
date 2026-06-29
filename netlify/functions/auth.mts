@@ -1,4 +1,5 @@
 import type { Context, Config } from "@netlify/functions";
+import { issueToken } from "./lib/auth.ts";
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") {
@@ -15,10 +16,7 @@ export default async (req: Request, _context: Context) => {
     });
   }
 
-  const token = btoa(JSON.stringify({
-    authenticated: true,
-    exp: Date.now() + 7 * 24 * 60 * 60 * 1000,
-  }));
+  const token = issueToken();
 
   return new Response(JSON.stringify({ token }), {
     headers: { "Content-Type": "application/json" },
