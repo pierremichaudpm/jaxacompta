@@ -41,17 +41,33 @@ export default async (req: Request) => {
       `;
     }
 
-    const [totaux] = await sql`
-      SELECT
-        COALESCE(SUM(CASE WHEN type = 'revenu' THEN total_ttc ELSE 0 END), 0) as revenus,
-        COALESCE(SUM(CASE WHEN type = 'dépense' THEN total_ttc ELSE 0 END), 0) as depenses,
-        COALESCE(SUM(CASE WHEN type = 'revenu' THEN tps ELSE 0 END), 0) as tps_percue,
-        COALESCE(SUM(CASE WHEN type = 'dépense' THEN tps ELSE 0 END), 0) as tps_payee,
-        COALESCE(SUM(CASE WHEN type = 'revenu' THEN tvq ELSE 0 END), 0) as tvq_percue,
-        COALESCE(SUM(CASE WHEN type = 'dépense' THEN tvq ELSE 0 END), 0) as tvq_payee
-      FROM transactions
-      WHERE to_char(date_transaction, 'YYYY-MM') = ${mois}
-    `;
+    let totaux;
+    if (compte) {
+      [totaux] = await sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN total_ttc ELSE 0 END), 0) as revenus,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN total_ttc ELSE 0 END), 0) as depenses,
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN tps ELSE 0 END), 0) as tps_percue,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN tps ELSE 0 END), 0) as tps_payee,
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN tvq ELSE 0 END), 0) as tvq_percue,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN tvq ELSE 0 END), 0) as tvq_payee
+        FROM transactions
+        WHERE to_char(date_transaction, 'YYYY-MM') = ${mois}
+          AND compte_id IN (SELECT id FROM comptes_bancaires WHERE code = ${compte})
+      `;
+    } else {
+      [totaux] = await sql`
+        SELECT
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN total_ttc ELSE 0 END), 0) as revenus,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN total_ttc ELSE 0 END), 0) as depenses,
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN tps ELSE 0 END), 0) as tps_percue,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN tps ELSE 0 END), 0) as tps_payee,
+          COALESCE(SUM(CASE WHEN type = 'revenu' THEN tvq ELSE 0 END), 0) as tvq_percue,
+          COALESCE(SUM(CASE WHEN type = 'dépense' THEN tvq ELSE 0 END), 0) as tvq_payee
+        FROM transactions
+        WHERE to_char(date_transaction, 'YYYY-MM') = ${mois}
+      `;
+    }
 
     return Response.json({ rows, totaux });
   }
