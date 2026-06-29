@@ -54,6 +54,7 @@ export default async (req: Request) => {
         FROM transactions
         WHERE to_char(date_transaction, 'YYYY-MM') = ${mois}
           AND compte_id IN (SELECT id FROM comptes_bancaires WHERE code = ${compte})
+          AND is_transfert = false
       `;
     } else {
       [totaux] = await sql`
@@ -66,6 +67,7 @@ export default async (req: Request) => {
           COALESCE(SUM(CASE WHEN type = 'dépense' THEN tvq ELSE 0 END), 0) as tvq_payee
         FROM transactions
         WHERE to_char(date_transaction, 'YYYY-MM') = ${mois}
+          AND is_transfert = false
       `;
     }
 
