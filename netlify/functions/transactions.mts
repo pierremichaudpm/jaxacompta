@@ -198,6 +198,37 @@ export default async (req: Request, _context: Context) => {
       });
     }
 
+    // Détecte si la ligne éditée est une patte de transfert.
+    const [existing] = await sql`
+      SELECT id_transfert FROM transactions WHERE id = ${data.id}
+    `;
+    const idTransfert = existing?.id_transfert ?? null;
+
+    // Patte de transfert : enforcement serveur autoritaire. On ne propage que les
+    // champs sûrs (date, montant, taxes à 0) aux DEUX pattes via id_transfert, et on
+    // ne touche jamais type/compte_id/compte_destination_id/id_transfert/is_transfert
+    // -> le croisement (types opposés, comptes inversés) reste intact sur chaque patte.
+    // Tout type/compte envoyé par le form est ignoré.
+    if (idTransfert != null) {
+      const montant = data.total_ttc;
+      await sql`
+        UPDATE transactions SET
+          date_transaction = ${data.date_transaction},
+          montant_ht = ${montant}, total_ttc = ${montant},
+          tps = 0, tvq = 0, updated_at = NOW()
+        WHERE id_transfert = ${idTransfert}
+      `;
+      // Description : uniquement sur la patte éditée, sans toucher le préfixe de la miroir.
+      const result = await sql`
+        UPDATE transactions SET description = ${data.description}, updated_at = NOW()
+        WHERE id = ${data.id}
+        RETURNING *
+      `;
+      return new Response(JSON.stringify(result[0]), {
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
     const result = await sql`
       UPDATE transactions SET
         date_transaction=${data.date_transaction}, type=${data.type}, numero=${data.numero},
