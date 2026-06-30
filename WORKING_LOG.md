@@ -35,8 +35,8 @@
 
 ### Prochaines etapes
 
-- [ ] **BLOQUANT** : appliquer 014 → 015 → 016 sur la DB Neon prod (apres backup verifie). Sans elles, toute la chaine transfert echoue en prod.
-- [ ] Tester un transfert de bout en bout en prod (creation paire, exclusion du resultat, suppression, edition) une fois les migrations passees.
+- [x] Migrations 014 → 015 → 016 appliquees sur la DB Neon prod (verifie le 2026-06-29 : colonnes `id_transfert`/`is_transfert`/`compte_destination_id` presentes, compte `MARGE-BN` present).
+- [x] Transfert teste de bout en bout en prod via l'UI (creation paire, suppression, edition) — fonctionnel.
 - [ ] Verrouiller type/comptes d'un transfert cote UI (bonus, l'enforcement serveur suffit a la correction).
 - [ ] Corriger le token d'auth non signe (signature HMAC).
 - [ ] Ajouter le champ `notes` au payload de creation (toujours en attente).

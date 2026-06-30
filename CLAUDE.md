@@ -71,9 +71,7 @@ netlify env:get NETLIFY_DATABASE_URL
 psql "$URL" -f migrations/XXX_name.sql
 ```
 
-Migrations actuelles : 001 (schema) → 016 (compte_destination_id). 001-013 executees sur la DB prod (incluant 012 branding, executee le 2026-03-17).
-
-**⚠️ 014, 015, 016 PAS encore appliquees en prod (2026-06-29)** — committees mais non executees. Elles ajoutent `id_transfert`/`is_transfert` (014), le compte Marge de credit BN (015) et `compte_destination_id` (016). Toute la chaine des transferts (miroir, suppression/edition de paire) echouera en prod tant qu'elles ne sont pas appliquees, dans l'ordre 014 → 015 → 016, apres backup verifie.
+Migrations actuelles : 001 (schema) → 016 (compte_destination_id). **Toutes executees sur la DB prod**, incluant 014 (`id_transfert`/`is_transfert`), 015 (compte Marge de credit BN) et 016 (`compte_destination_id`) — verifiees en prod le 2026-06-29, la chaine des transferts (miroir, suppression/edition de paire) fonctionne en prod.
 
 Pas de table de suivi des migrations ni de runner : application 100% manuelle via psql. `scripts/migrate.mjs` est un bootstrap obsolete (fige a 001-005), ne pas s'y fier.
 
