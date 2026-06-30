@@ -34,7 +34,7 @@ jaxa-compta/
 │   ├── projets.mts       # /api/projets
 │   ├── ocr.mts           # /api/ocr (Claude Vision)
 │   └── ...
-├── migrations/           # SQL migrations (001-013)
+├── migrations/           # SQL migrations (001-016)
 └── dist/                 # Build output (deployed to Netlify)
 ```
 
@@ -71,7 +71,11 @@ netlify env:get NETLIFY_DATABASE_URL
 psql "$URL" -f migrations/XXX_name.sql
 ```
 
-Migrations actuelles : 001 (schema) → 013 (contact_adresses). Toutes executees sur la DB prod (incluant 012 branding, executee le 2026-03-17).
+Migrations actuelles : 001 (schema) → 016 (compte_destination_id). 001-013 executees sur la DB prod (incluant 012 branding, executee le 2026-03-17).
+
+**⚠️ 014, 015, 016 PAS encore appliquees en prod (2026-06-29)** — committees mais non executees. Elles ajoutent `id_transfert`/`is_transfert` (014), le compte Marge de credit BN (015) et `compte_destination_id` (016). Toute la chaine des transferts (miroir, suppression/edition de paire) echouera en prod tant qu'elles ne sont pas appliquees, dans l'ordre 014 → 015 → 016, apres backup verifie.
+
+Pas de table de suivi des migrations ni de runner : application 100% manuelle via psql. `scripts/migrate.mjs` est un bootstrap obsolete (fige a 001-005), ne pas s'y fier.
 
 **Attention aux migrations manquantes** : le code peut referencer des colonnes ajoutees par des migrations recentes. Si une feature echoue avec "Erreur serveur", verifier que toutes les migrations ont bien ete executees sur la DB prod.
 
@@ -92,6 +96,7 @@ c.connect().then(() => c.query('SELECT 1')).then(r => { console.log(r.rows); c.e
 - **Contacts dans Factures** : sous-vue via `showContacts` early return (pas un onglet separe)
 - **PDF** : genere cote client via `generateFacturePDF()`, separe de la sauvegarde API
 - **Excel bilan** : genere cote client via `generateBilanExcel()` — 3 onglets (Transactions, Sommaire comptable, Par categorie), format professionnel pour le comptable
+- **Miroir des transferts** : un transfert = 2 lignes liees par `id_transfert`, `is_transfert=true`. Declencheur cote serveur = `compte_destination_id` non NULL (PAS le type ni la categorie). POST genere la paire source (`type='dépense'`) + miroir (`type='revenu'`) en UNE seule instruction CTE atomique (le driver Neon HTTP ne fait pas de transaction multi-requetes) ; l'id source est pre-alloue via `nextval(pg_get_serial_sequence(...))` et sert d'`id_transfert` commun. Anti-boucle : la miroir n'est jamais re-traitee (insert direct, pas de re-POST). Idempotence : pas de re-paire si `id_transfert` deja pose. Les transferts sont exclus du resultat (`is_transfert=false` dans les totaux de `rapports.mts`) mais restent dans le solde des comptes. DELETE d'une patte supprime les deux (`WHERE id_transfert = X`). PUT d'une patte propage uniquement les champs surs (date, montant, taxes a 0) aux deux pattes ; type/comptes restent croises et figes (enforcement serveur autoritaire). Le form (`TransactionForm`) envoie `compte_destination_id` UNIQUEMENT en mode transfert (force a null sur tout autre type).
 
 ## Contexte global
 Voir ~/Documents/CONTEXT.md pour le profil complet,

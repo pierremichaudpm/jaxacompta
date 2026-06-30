@@ -1,5 +1,49 @@
 # WORKING_LOG — JAXA Compta
 
+## Session 2026-06-29
+
+### Progres
+
+1. **Correctifs preliminaires**
+   - **OCR 404** : `ocr.mts` referencait le modele retire `claude-sonnet-4-20250514` → 404 `not_found_error`. Remplace par `claude-sonnet-4-6` + log du corps d'erreur complet (status + body).
+   - **Filtre compte des totaux mensuels** (`rapports.mts`) : la requete `totaux` ignorait le filtre `compte` (les `rows` le respectaient). Dedoublee en branches if(compte)/else avec `AND compte_id IN (SELECT id FROM comptes_bancaires WHERE code = ${compte})` (code unique → sous-requete ≡ JOIN).
+   - **Garde-fou backups** (`.gitignore`) : `*.sql.backup`, `backups/`, `*.dump` — verifie qu'il ne masque pas `migrations/*.sql`.
+
+2. **Chantier "miroir automatique des transferts"** (decoupe en commits isoles)
+   - **Migration 014** : colonnes `id_transfert INTEGER` + `is_transfert BOOLEAN DEFAULT false` + index partiel `WHERE id_transfert IS NOT NULL`. Additive.
+   - **Exclusion du resultat** : `AND is_transfert = false` ajoute aux deux branches totaux de `rapports.mts` (les transferts restent dans le solde des comptes mais pas dans revenus/depenses).
+   - **Migration 015** : compte `MARGE-BN` "Marge de credit Banque Nationale" dans `comptes_bancaires` (ON CONFLICT DO NOTHING). `comptes_bancaires` n'a PAS de champ actif/passif.
+   - **Migration 016** : colonne `compte_destination_id INTEGER` FK vers `comptes_bancaires(id)`, nullable. Additive.
+   - **Generation du miroir (POST `transactions.mts`)** : declencheur `compte_destination_id != null && !id_transfert`. Une seule instruction CTE atomique (`ids` MATERIALIZED → `nextval(pg_get_serial_sequence)`, `source` dépense, `mirror` revenu), `id_transfert` commun = id source. Validation source≠destination (400) + catch FK → message clair.
+   - **Champ "Compte destination" (front `TransactionForm.tsx`)** : visible uniquement si `type === "transfert"`, calque sur le select Compte. Invariant 1 : `compte_destination_id` force a null des que le type n'est pas transfert (via `updateField` ET la voie preset `initialData`). Invariant 2 : blocage avant submit si destination manquante ou = source.
+   - **Suppression de paire (DELETE)** : `DELETE ... WHERE id = X OR id_transfert = (SELECT id_transfert FROM transactions WHERE id = X AND id_transfert IS NOT NULL)` → 1 ligne pour une normale, 2 pour un transfert. `RETURNING id` → `deleted.length` renvoye au front. Message `confirm()` adapte quand `tx.id_transfert` non null.
+   - **Edition de paire (PUT)** : SELECT prealable de l'`id_transfert`. Si non null, enforcement serveur autoritaire : UPDATE des champs surs (date, montant, tps/tvq=0) sur les DEUX pattes via `WHERE id_transfert = X`, description sur la seule patte editee ; type/compte_id/compte_destination_id/id_transfert/is_transfert jamais dans le SET (croisement preserve). Sinon comportement normal inchange.
+
+### Decisions techniques
+
+- **Declencheur de transfert = `compte_destination_id` non NULL**, jamais le `type` ni la categorie 10 "Transfert interne" (le serveur hardcode dépense/revenu et ignore le `type` envoye). Les pattes stockees ont donc type dépense/revenu, PAS 'transfert'.
+- **CTE atomique unique** : le driver Neon HTTP (`neon()`) ne supporte pas BEGIN/COMMIT multi-requetes. Pre-allocation de l'id source via la sequence existante (`pg_get_serial_sequence('transactions','id')` = `transactions_id_seq`, verifie au schema) pour poser `id_transfert` sur les deux pattes des l'insert.
+- **PUT transfert = enforcement serveur, pas verrouillage UI** : le formulaire ne sait pas qu'il edite un transfert (`initialData` ne transmet ni `compte_destination_id` ni `id_transfert`), donc on ignore cote serveur tout type/compte envoye plutot que de se fier au front.
+- **Migrations appliquees manuellement** : aucun runner ni table de suivi ; `scripts/migrate.mjs` obsolete (001-005). psql contre l'URL Neon.
+
+### Problemes rencontres
+
+1. **OCR 404 non reproductible en local** : `ANTHROPIC_API_KEY` masquee hors prod → diagnostic par raisonnement (modele de mai 2025 retire pour un compte recent).
+2. **Driver Neon sans transaction interactive** : a impose le pattern CTE single-statement plutot que insert→read→update.
+3. **Token d'auth non signe** (`lib/auth.ts` : base64 JSON non signe, donc forgeable) — vulnerabilite signalee (tache separee), non corrigee dans ce chantier.
+4. **`node_modules` absent en local** : pas de typecheck/lint possible cette session ; relecture manuelle des diffs.
+
+### Prochaines etapes
+
+- [ ] **BLOQUANT** : appliquer 014 → 015 → 016 sur la DB Neon prod (apres backup verifie). Sans elles, toute la chaine transfert echoue en prod.
+- [ ] Tester un transfert de bout en bout en prod (creation paire, exclusion du resultat, suppression, edition) une fois les migrations passees.
+- [ ] Verrouiller type/comptes d'un transfert cote UI (bonus, l'enforcement serveur suffit a la correction).
+- [ ] Corriger le token d'auth non signe (signature HMAC).
+- [ ] Ajouter le champ `notes` au payload de creation (toujours en attente).
+- [ ] Remplacer les `alert()`/`confirm()` par des toasts/dialogs shadcn/ui.
+
+---
+
 ## Session 2026-05-27
 
 ### Progres
