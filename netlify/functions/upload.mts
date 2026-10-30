@@ -1,13 +1,14 @@
 import { getStore } from "@netlify/blobs";
 import type { Context, Config } from "@netlify/functions";
-import { verifyAuth, unauthorized } from "./lib/auth.ts";
+import { authorizeRequest } from "./lib/auth.ts";
 
 export default async (req: Request, _context: Context) => {
   const url = new URL(req.url);
 
   // Allow unauthenticated GET (keys are random/unguessable)
   if (req.method !== "GET") {
-    if (!verifyAuth(req)) return unauthorized();
+    const denied = authorizeRequest(req);
+    if (denied) return denied;
   }
 
   if (req.method === "POST") {

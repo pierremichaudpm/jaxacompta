@@ -1,6 +1,6 @@
 import { neon } from "@netlify/neon";
 import type { Context, Config } from "@netlify/functions";
-import { verifyAuth, unauthorized } from "./lib/auth.ts";
+import { authorizeRequest } from "./lib/auth.ts";
 
 function advanceDate(dateStr: string, frequence: string): string {
   const d = new Date(dateStr + "T12:00:00");
@@ -12,7 +12,8 @@ function advanceDate(dateStr: string, frequence: string): string {
 }
 
 export default async (req: Request, _context: Context) => {
-  if (!verifyAuth(req)) return unauthorized();
+  const denied = authorizeRequest(req);
+  if (denied) return denied;
 
   const sql = neon();
   const url = new URL(req.url);

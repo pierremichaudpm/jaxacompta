@@ -67,7 +67,7 @@ type SortField =
   | "description";
 type SortDir = "asc" | "desc";
 
-export default function TransactionList() {
+export default function TransactionList({ readOnly = false }: { readOnly?: boolean }) {
   const [rows, setRows] = useState<Transaction[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(0);
@@ -160,6 +160,7 @@ export default function TransactionList() {
   }, [fetchData]);
 
   const handleDelete = async (tx: Transaction) => {
+    if (readOnly) return;
     const message = tx.id_transfert
       ? "Cette transaction est un transfert : les DEUX écritures liées seront supprimées. Continuer ?"
       : "Supprimer cette transaction ?";
@@ -283,6 +284,7 @@ export default function TransactionList() {
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
             <CardTitle>Transactions ({total})</CardTitle>
             <div className="flex gap-2">
+              {!readOnly && (
               <Button
                 variant="outline"
                 size="sm"
@@ -291,6 +293,7 @@ export default function TransactionList() {
                 <Copy className="h-4 w-4 mr-2" />
                 Doublons
               </Button>
+              )}
               <Button variant="outline" size="sm" onClick={exportExcel}>
                 <Download className="h-4 w-4 mr-2" />
                 Export Excel
@@ -516,6 +519,7 @@ export default function TransactionList() {
                               <FileText className="h-3 w-3" />
                             </Button>
                           )}
+                          {!readOnly && <>
                           <Button
                             variant="ghost"
                             size="icon"
@@ -532,6 +536,7 @@ export default function TransactionList() {
                           >
                             <Trash2 className="h-3 w-3" />
                           </Button>
+                          </>}
                         </div>
                       </TableCell>
                     </TableRow>
@@ -571,12 +576,12 @@ export default function TransactionList() {
       </Card>
 
       {/* Edit Dialog */}
-      <Dialog open={!!editTx} onOpenChange={() => setEditTx(null)}>
+      <Dialog open={!readOnly && !!editTx} onOpenChange={() => setEditTx(null)}>
         <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Modifier la transaction</DialogTitle>
           </DialogHeader>
-          {editTx && (
+          {!readOnly && editTx && (
             <TransactionForm
               embedded
               editId={editTx.id}
@@ -609,12 +614,12 @@ export default function TransactionList() {
       </Dialog>
 
       {/* Duplicate Review Dialog */}
-      <Dialog open={showDuplicates} onOpenChange={setShowDuplicates}>
+      <Dialog open={!readOnly && showDuplicates} onOpenChange={setShowDuplicates}>
         <DialogContent className="sm:max-w-2xl w-[calc(100%-1rem)] max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
             <DialogTitle>Détection de doublons</DialogTitle>
           </DialogHeader>
-          {showDuplicates && (
+          {!readOnly && showDuplicates && (
             <DuplicateReview
               onClose={() => setShowDuplicates(false)}
               onDeleted={fetchData}

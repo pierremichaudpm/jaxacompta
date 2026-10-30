@@ -43,6 +43,8 @@ jaxa-compta/
 - UI entierement en francais
 - API REST : `/api/resource`, methodes GET/POST/PUT/DELETE
 - Auth : Bearer token (base64-encoded JSON, 7 jours)
+- Accès invité : `READ_ONLY_EMAIL` + `READ_ONLY_PASSWORD_HASH` (format `salt:scryptHex`, clé de 64 octets). Connexion via « Accès invité », ou `?email=...`. Rôle signé `reader` : consultation et exports, toutes les requêtes de modification renvoient 403 via `authorizeRequest`. Les sessions d’équipe existantes gardent leur accès. Supprimer `READ_ONLY_EMAIL` révoque aussi les sessions invitées.
+- Vérification des permissions : `npm test` (Node 22 avec suppression des types TypeScript).
 - Neon SQL : tagged templates `sql\`...\`` ou `sql.query()` pour dynamic WHERE
 - Dates ISO 8601 (`YYYY-MM-DD`), montants `DECIMAL(12,2)`
 - Factures = transactions de type 'revenu' avec `numero_facture` et `lignes_facture` (JSON)

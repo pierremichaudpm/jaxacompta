@@ -35,11 +35,11 @@ export const api = {
   delete: <T>(path: string) => request<T>(path, { method: 'DELETE' }),
 };
 
-export async function login(password: string): Promise<string> {
+export async function login(password: string, email?: string): Promise<string> {
   const res = await fetch('/api/auth', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ password, ...(email ? { email } : {}) }),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({ error: 'Erreur' }));
@@ -61,6 +61,16 @@ export function isAuthenticated(): boolean {
   try {
     const payload = JSON.parse(atob(token.split('.')[0]));
     return payload.authenticated && payload.exp > Date.now();
+  } catch {
+    return false;
+  }
+}
+
+export function isReadOnly(): boolean {
+  const token = getToken();
+  if (!token) return false;
+  try {
+    return JSON.parse(atob(token.split('.')[0])).role === 'reader';
   } catch {
     return false;
   }

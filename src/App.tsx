@@ -91,17 +91,22 @@ const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
 ];
 
 export default function App() {
-  const { authenticated, loading, error, login, logout } = useAuth();
+  const { authenticated, readOnly, loading, error, login, logout } = useAuth();
   const [page, setPage] = useState<Page>("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [saisieTab, setSaisieTab] = useState("photo");
 
   // Auto-generate due recurring transactions on login
   useEffect(() => {
-    if (authenticated) {
+    if (authenticated && !readOnly) {
       api.post("/api/recurrences", { action: "generate" }).catch(() => {});
     }
-  }, [authenticated]);
+  }, [authenticated, readOnly]);
+
+  const navItems = readOnly
+    ? NAV_ITEMS.filter((item) => ["dashboard", "transactions", "rapports"].includes(item.key))
+    : NAV_ITEMS;
+  const activePage = navItems.some((item) => item.key === page) ? page : "rapports";
 
   if (!authenticated) {
     return <Login onLogin={login} error={error} loading={loading} />;
@@ -126,7 +131,7 @@ export default function App() {
             <img src={logoWhite} alt="JAXA Production" className="h-10" />
           </div>
           <nav className="hidden xl:flex items-center gap-0">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Button
                 key={item.key}
                 variant={page === item.key ? "secondary" : "ghost"}
@@ -143,6 +148,8 @@ export default function App() {
             ))}
           </nav>
           <div className="flex items-center gap-1 shrink-0">
+            {readOnly && <span className="text-xs text-slate-500 mr-2">Lecture seule</span>}
+            {!readOnly && (
             <Button
               variant="ghost"
               size="icon-lg"
@@ -156,6 +163,7 @@ export default function App() {
             >
               <Camera className="size-7" />
             </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"
@@ -171,7 +179,7 @@ export default function App() {
         {/* Burger menu (below xl breakpoint) */}
         {mobileMenuOpen && (
           <nav className="xl:hidden border-t border-slate-200 px-4 py-2 space-y-1">
-            {NAV_ITEMS.map((item) => (
+            {navItems.map((item) => (
               <Button
                 key={item.key}
                 variant={page === item.key ? "secondary" : "ghost"}
@@ -192,9 +200,9 @@ export default function App() {
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 py-6">
-        {page === "dashboard" && <Dashboard />}
+        {activePage === "dashboard" && <Dashboard />}
 
-        {page === "saisie" && (
+        {activePage === "saisie" && (
           <Tabs value={saisieTab} onValueChange={setSaisieTab}>
             <TabsList className="mb-4 w-full sm:w-fit">
               <TabsTrigger value="photo">
@@ -229,13 +237,13 @@ export default function App() {
           </Tabs>
         )}
 
-        {page === "transactions" && <TransactionList />}
-        {page === "factures" && <Factures />}
-        {page === "projets" && <ProjetList />}
-        {page === "budgets" && <BudgetTracker />}
-        {page === "rapprochement" && <RapprochementComp />}
-        {page === "recurrences" && <RecurrenceList />}
-        {page === "rapports" && <Rapports />}
+        {activePage === "transactions" && <TransactionList readOnly={readOnly} />}
+        {activePage === "factures" && <Factures />}
+        {activePage === "projets" && <ProjetList />}
+        {activePage === "budgets" && <BudgetTracker />}
+        {activePage === "rapprochement" && <RapprochementComp />}
+        {activePage === "recurrences" && <RecurrenceList />}
+        {activePage === "rapports" && <Rapports />}
       </main>
     </div>
   );

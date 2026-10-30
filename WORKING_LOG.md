@@ -228,3 +228,13 @@
 - [ ] Ajouter le champ `notes` dans le payload de `handleCreate` (formNotes non envoye a l'API)
 - [ ] Remplacer les `alert()` par des toasts shadcn/ui (optionnel)
 - [ ] Envisager un script de verification des migrations au demarrage ou en CI
+
+## Session 2026-10-29 — Accès invité Ahmed
+
+- Ajout d’un rôle signé `reader` et d’une connexion « Accès invité » par courriel et mot de passe distinct. Le mot de passe invité est stocké sous forme de hash scrypt dans les variables Netlify des fonctions en production.
+- Accès configuré pour `ahmed@benoitgauthier.ca` : tableau de bord, transactions et rapports, avec exports PDF/Excel. Toutes les routes API protégées bloquent les méthodes de modification avant d’accéder à la base, aux pièces jointes ou à l’OCR. Aucune génération de récurrences à la connexion d’un invité.
+- Accès équipe et sessions existantes préservés. La suppression de `READ_ONLY_EMAIL` révoque les sessions invitées.
+- Déployé en production sur `https://comptajaxa.netlify.app` (déploiement initial : `6ae40bdd447de688b89648a8`).
+- Validation : `npm test` (4 tests dont les 16 routes API), build Vite, connexion réelle invité, 48 refus HTTP 403 en production, lecture des rapports mensuels/trimestriels/annuels, téléchargements PDF/Excel dans Chrome, absence de boutons d’édition et de requêtes de modification automatiques.
+- Vérification TypeScript : 7 diagnostics déjà présents sur HEAD, aucun nouveau. Lint global : erreurs préexistantes (variables inutilisées et exports fast-refresh, incluant un ancien worktree) ; lint des nouveaux composants de connexion et de l’application réussi.
+- Les identifiants ont été conservés hors dépôt dans `~/.local/share/jaxa-compta/ahmed-access.json` avec permissions 600. Aucun courriel envoyé.

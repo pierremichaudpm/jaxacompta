@@ -1,9 +1,10 @@
 import { neon } from "@netlify/neon";
 import type { Config } from "@netlify/functions";
-import { verifyAuth, unauthorized } from "./lib/auth.ts";
+import { authorizeRequest } from "./lib/auth.ts";
 
 export default async (req: Request) => {
-  if (!verifyAuth(req)) return unauthorized();
+  const denied = authorizeRequest(req);
+  if (denied) return denied;
   const sql = neon();
   const url = new URL(req.url);
   const type = url.searchParams.get("type") || "mensuel";

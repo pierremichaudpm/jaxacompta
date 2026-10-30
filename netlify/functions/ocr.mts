@@ -1,8 +1,9 @@
 import type { Context, Config } from "@netlify/functions";
-import { verifyAuth, unauthorized } from "./lib/auth.ts";
+import { authorizeRequest } from "./lib/auth.ts";
 
 export default async (req: Request, _context: Context) => {
-  if (!verifyAuth(req)) return unauthorized();
+  const denied = authorizeRequest(req);
+  if (denied) return denied;
   if (req.method !== "POST") {
     return new Response("Method not allowed", { status: 405 });
   }
