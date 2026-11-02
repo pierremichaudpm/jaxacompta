@@ -180,3 +180,143 @@ export interface PeriodeFiscale {
   tvq_payee: number;
   reference: string | null;
 }
+
+// --- Paie employé ---
+
+export interface Employe {
+  id: number;
+  prenom: string;
+  nom: string;
+  actionnaire: boolean;
+  statut: "actif" | "inactif";
+  date_embauche: string | null;
+  poste: string | null;
+  adresse: string | null;
+  courriel: string | null;
+  nas_derniers3: string | null;
+  taux_horaire: number | null;
+  heures_semaine: number | null;
+  periodes_par_an: number;
+  mpb_provincial: number | null;
+  mpb_federal: number | null;
+  assujetti_ae: boolean;
+  assujetti_cnesst: boolean;
+  taux_vacances: number;
+  compte_bancaire_id: number | null;
+  compte_nom?: string | null;
+  notes: string | null;
+  nb_paies?: number;
+}
+
+export type StatutPaie = "brouillon" | "validee" | "comptabilisee" | "das_payees";
+
+export interface Paie {
+  id: number;
+  employe_id: number;
+  prenom?: string;
+  nom?: string;
+  date_paie: string;
+  periode_debut: string | null;
+  periode_fin: string | null;
+  heures: number | null;
+  brut: number;
+  ae: number;
+  rqap: number;
+  rrq: number;
+  impot_federal: number;
+  impot_provincial: number;
+  fss: number;
+  net_reference: number | null;
+  net: number;
+  rqap_employeur: number;
+  rrq_employeur: number;
+  ae_employeur: number;
+  cnt: number;
+  cnesst: number;
+  vacances: number;
+  das_federal: number;
+  das_provincial: number;
+  statut: StatutPaie;
+  compte_bancaire_id: number | null;
+  compte_nom?: string | null;
+  piece_jointe_key: string | null;
+  piece_jointe_nom: string | null;
+  ecriture_id: number | null;
+  transaction_id: number | null;
+  notes: string | null;
+}
+
+export interface ParametresPaieAnnee {
+  annee: number;
+  rqap_taux_employe: number | null;
+  rqap_taux_employeur: number;
+  rqap_max_assurable: number;
+  ae_taux_employe: number | null;
+  ae_ratio_employeur: number;
+  ae_max_assurable: number | null;
+  rrq_taux: number | null;
+  rrq_exemption: number | null;
+  rrq_max_gains: number | null;
+  fss_taux: number;
+  cnt_taux: number;
+  cnt_max_assurable: number;
+  cnesst_taux: number;
+  cnesst_max_assurable: number | null;
+  mpb_provincial: number | null;
+  mpb_federal: number | null;
+}
+
+export interface RemiseDAS {
+  id: number;
+  mois: string;
+  palier: "federal" | "provincial";
+  montant: number;
+  detail: Record<string, number>;
+  date_limite: string;
+  date_paiement: string;
+  compte_nom?: string | null;
+  demande_par: string | null;
+  approuve_par: string | null;
+}
+
+export interface PalierDAS {
+  payable_a: string;
+  detail: Record<string, number>;
+  total: number;
+  remise: RemiseDAS | null;
+}
+
+export interface MoisDAS {
+  mois: string;
+  date_limite: string;
+  masse_salariale: number;
+  nb_employes: number;
+  nb_paies: number;
+  nb_non_comptabilisees: number;
+  dates_paie: string[];
+  federal: PalierDAS;
+  provincial: PalierDAS;
+}
+
+export interface EcriturePaie {
+  id: number;
+  date_ecriture: string;
+  libelle: string;
+  source: "paie" | "remise_das" | "annulation";
+  annulee: boolean;
+  annule_ecriture_id: number | null;
+  created_by: string | null;
+  created_at: string;
+  lignes: { compte: string; nom: string; debit: number; credit: number; banque: string | null }[];
+}
+
+export interface ModificationPaie {
+  id: number;
+  table_nom: string;
+  enregistrement_id: number | null;
+  action: string;
+  utilisateur: string | null;
+  avant: Record<string, unknown> | null;
+  apres: Record<string, unknown> | null;
+  created_at: string;
+}

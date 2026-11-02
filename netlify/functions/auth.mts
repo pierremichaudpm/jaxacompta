@@ -1,5 +1,5 @@
 import type { Context, Config } from "@netlify/functions";
-import { issueToken, verifyReaderPassword } from "./lib/auth.ts";
+import { issueToken, verifyEmailPassword, verifyReaderPassword } from "./lib/auth.ts";
 
 export default async (req: Request, _context: Context) => {
   if (req.method !== "POST") {
@@ -15,15 +15,18 @@ export default async (req: Request, _context: Context) => {
   const email = data.email?.trim().toLowerCase() || "";
   const APP_PASSWORD = Netlify.env.get("APP_PASSWORD");
 
-  const authenticated = email ? verifyReaderPassword(email, password) : !!APP_PASSWORD && password === APP_PASSWORD;
-  if (!authenticated) {
+  const role = !email
+    ? (!!APP_PASSWORD && password === APP_PASSWORD ? "admin" : null)
+    : verifyEmailPassword("paie", email, password) ? "paie"
+    : verifyReaderPassword(email, password) ? "reader" : null;
+  if (!role) {
     return new Response(JSON.stringify({ error: "Identifiants incorrects" }), {
       status: 401,
       headers: { "Content-Type": "application/json" },
     });
   }
 
-  const token = issueToken(undefined, email ? "reader" : "admin", email || undefined);
+  const token = issueToken(undefined, role, email || undefined);
 
   return new Response(JSON.stringify({ token }), {
     headers: { "Content-Type": "application/json" },

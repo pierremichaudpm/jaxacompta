@@ -34,14 +34,14 @@ export default function Login({ onLogin, error, loading }: LoginProps) {
         <CardContent>
           <div className="grid grid-cols-2 gap-2 mb-4" aria-label="Type d’accès">
             <Button type="button" variant={guest ? 'outline' : 'default'} aria-pressed={!guest} onClick={() => { setGuest(false); setPassword(''); }}>Équipe JAXA</Button>
-            <Button type="button" variant={guest ? 'default' : 'outline'} aria-pressed={guest} onClick={() => { setGuest(true); setPassword(''); }}>Accès invité</Button>
+            <Button type="button" variant={guest ? 'default' : 'outline'} aria-pressed={guest} onClick={() => { setGuest(true); setPassword(''); }}>Accès par courriel</Button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
             {guest && (
               <div className="space-y-2">
                 <Label htmlFor="email">Courriel</Label>
                 <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" required />
-                <p className="text-xs text-muted-foreground">Consultation et export des rapports en lecture seule.</p>
+                <p className="text-xs text-muted-foreground">Accès paie, ou accès invité en lecture seule (consultation et exports).</p>
               </div>
             )}
             <div className="space-y-2">

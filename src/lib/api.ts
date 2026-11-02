@@ -66,6 +66,42 @@ export function isAuthenticated(): boolean {
   }
 }
 
+export function getRole(): 'admin' | 'reader' | 'paie' | null {
+  const token = getToken();
+  if (!token) return null;
+  try {
+    return JSON.parse(atob(token.split('.')[0])).role ?? 'admin';
+  } catch {
+    return null;
+  }
+}
+
+// Pièces jointes de paie : magasin privé, lecture authentifiée
+export async function televerserPiecePaie(file: File): Promise<{ key: string; nom: string }> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await fetch('/api/paie/pieces', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${getToken()}` },
+    body: form,
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText }));
+    throw new Error(err.error || 'Erreur de téléversement');
+  }
+  return res.json();
+}
+
+export async function ouvrirPiecePaie(key: string) {
+  const res = await fetch(`/api/paie/pieces?key=${encodeURIComponent(key)}`, {
+    headers: { Authorization: `Bearer ${getToken()}` },
+  });
+  if (!res.ok) throw new Error('Pièce introuvable');
+  const url = URL.createObjectURL(await res.blob());
+  window.open(url, '_blank', 'noopener');
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
 export function isReadOnly(): boolean {
   const token = getToken();
   if (!token) return false;

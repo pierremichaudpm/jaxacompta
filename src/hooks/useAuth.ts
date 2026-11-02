@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback } from 'react';
-import { isAuthenticated, isReadOnly, login as apiLogin, logout as apiLogout } from '@/lib/api';
+import { getRole, isAuthenticated, isReadOnly, login as apiLogin, logout as apiLogout } from '@/lib/api';
 
 export function useAuth() {
   const [authenticated, setAuthenticated] = useState(() => isAuthenticated());
   const [readOnly, setReadOnly] = useState(() => isReadOnly());
+  const [role, setRole] = useState(() => getRole());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -17,6 +18,7 @@ export function useAuth() {
     try {
       await apiLogin(password, email);
       setReadOnly(isReadOnly());
+      setRole(getRole());
       setAuthenticated(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Erreur de connexion');
@@ -31,5 +33,5 @@ export function useAuth() {
     setAuthenticated(false);
   }, []);
 
-  return { authenticated, readOnly, loading, error, login, logout };
+  return { authenticated, readOnly, role, loading, error, login, logout };
 }

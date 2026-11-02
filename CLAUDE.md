@@ -44,7 +44,8 @@ jaxa-compta/
 - API REST : `/api/resource`, methodes GET/POST/PUT/DELETE
 - Auth : Bearer token (base64-encoded JSON, 7 jours)
 - Accès invité : `READ_ONLY_EMAIL` + `READ_ONLY_PASSWORD_HASH` (format `salt:scryptHex`, clé de 64 octets). Connexion via « Accès invité », ou `?email=...`. Rôle signé `reader` : consultation et exports, toutes les requêtes de modification renvoient 403 via `authorizeRequest`. Les sessions d’équipe existantes gardent leur accès. Supprimer `READ_ONLY_EMAIL` révoque aussi les sessions invitées.
-- Vérification des permissions : `npm test` (Node 22 avec suppression des types TypeScript).
+- Accès paie : `PAYROLL_EMAIL` + `PAYROLL_PASSWORD_HASH` (même format). Rôle signé `paie` : accès complet à l'app et à l'onglet Paie. Les routes `/api/paie*` passent par `authorizePaie` : rôle `paie` = tout, `reader` (comptable) = GET seulement, session d'équipe = 403. Supprimer `PAYROLL_EMAIL` révoque les sessions paie.
+- Vérification des permissions et des calculs de paie : `npm test` (Node 22 avec suppression des types TypeScript).
 - Neon SQL : tagged templates `sql\`...\`` ou `sql.query()` pour dynamic WHERE
 - Dates ISO 8601 (`YYYY-MM-DD`), montants `DECIMAL(12,2)`
 - Factures = transactions de type 'revenu' avec `numero_facture` et `lignes_facture` (JSON)
@@ -73,7 +74,9 @@ netlify env:get NETLIFY_DATABASE_URL
 psql "$URL" -f migrations/XXX_name.sql
 ```
 
-Migrations actuelles : 001 (schema) → 016 (compte_destination_id). **Toutes executees sur la DB prod**, incluant 014 (`id_transfert`/`is_transfert`), 015 (compte Marge de credit BN) et 016 (`compte_destination_id`) — verifiees en prod le 2026-06-29, la chaine des transferts (miroir, suppression/edition de paire) fonctionne en prod.
+Migrations actuelles : 001 (schema) → 017 (module paie). **017 pas encore executee en prod.** **Toutes executees sur la DB prod**, incluant 014 (`id_transfert`/`is_transfert`), 015 (compte Marge de credit BN) et 016 (`compte_destination_id`) — verifiees en prod le 2026-06-29, la chaine des transferts (miroir, suppression/edition de paire) fonctionne en prod.
+
+**Derive connue** : `comptes_bancaires.solde_reel` et `date_solde_reel` (lus par `comptes.mts`) existent en prod mais ne sont crees par aucune migration.
 
 Pas de table de suivi des migrations ni de runner : application 100% manuelle via psql. `scripts/migrate.mjs` est un bootstrap obsolete (fige a 001-005), ne pas s'y fier.
 
@@ -101,3 +104,16 @@ c.connect().then(() => c.query('SELECT 1')).then(r => { console.log(r.rows); c.e
 ## Contexte global
 Voir ~/Documents/CONTEXT.md pour le profil complet,
 les conventions transversales et la liste des clients actifs.
+
+## Paie employé
+
+Mode d'emploi : `docs/paie-mode-emploi.md`. Tables (017) : `employes`, `paies`, `paie_parametres` (taux par annee), `remises_das`, `comptes_gl` (plan comptable paie), `ecritures` + `ecriture_lignes` (partie double), `journal_modifications`.
+
+- **Principe** : les retenues de l'employe sont saisies depuis un calculateur externe (Impot.net). `src/lib/paieCalcul.ts` (partage front/serveur, le serveur fait foi) calcule part employeur, net, DAS, ecriture, en cents entiers arrondis a chaque ligne.
+- **RQAP employeur** = revenu assurable × `rqap_taux_employeur` (0,602 % en 2026), pas RQAP employe × 1,4. A-E employeur = A-E employe × 1,4.
+- **Statuts** : brouillon → validee → comptabilisee → das_payees. Comptabiliser = ecriture + transaction `dépense` (salaire net) sur le compte bancaire choisi, categorie « Salaires et charges sociales ». Annuler = ecriture inverse + suppression de la transaction, bloque si une remise DAS du mois est payee.
+- **DAS** : remise par mois et par palier (`federal`, `provincial`), limite au 15 du mois suivant (reportee au lundi). La CNESST est payee avec les DAS provinciales. Vacances, CNT et CNESST provisionnees a chaque paie.
+- **Driver Neon** : les colonnes DATE arrivent en objets `Date` (minuit local). Les fonctions paie les normalisent avec `dateIso` / `avecDates` (`netlify/functions/lib/paie.ts`).
+- **Transactions** : `sql.transaction([...])` (non interactive). Les ids lies sont reserves avant via `nextval` (`reserverId`) ; inserer les ecritures/transactions avant les lignes qui les referencent (cles etrangeres).
+- **Pieces jointes** : magasin Blobs prive `paie-pieces`, lecture authentifiee (`/api/paie/pieces`), contrairement a `receipts`.
+- **Employes** : NAS limite aux 3 derniers chiffres. Virginie Jaffredo (actionnaire, non assujettie A-E) creee par la migration ; fiche a completer dans l'app.

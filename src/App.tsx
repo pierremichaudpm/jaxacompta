@@ -14,6 +14,7 @@ import Factures from "@/components/Factures";
 import BudgetTracker from "@/components/BudgetTracker";
 import RapprochementComp from "@/components/Rapprochement";
 import RecurrenceList from "@/components/RecurrenceList";
+import PaieEmploye from "@/components/paie/PaieEmploye";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import logoWhite from "@/assets/logo-white.png";
@@ -33,6 +34,7 @@ import {
   LogOut,
   Menu,
   X,
+  Wallet,
 } from "lucide-react";
 
 type Page =
@@ -44,7 +46,8 @@ type Page =
   | "budgets"
   | "rapprochement"
   | "recurrences"
-  | "rapports";
+  | "rapports"
+  | "paie";
 
 const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
   {
@@ -88,10 +91,15 @@ const NAV_ITEMS: { key: Page; label: string; icon: React.ReactNode }[] = [
     label: "Rapports",
     icon: <FileText className="h-4 w-4" />,
   },
+  {
+    key: "paie",
+    label: "Paie employé",
+    icon: <Wallet className="h-4 w-4" />,
+  },
 ];
 
 export default function App() {
-  const { authenticated, readOnly, loading, error, login, logout } = useAuth();
+  const { authenticated, readOnly, role, loading, error, login, logout } = useAuth();
   const [page, setPage] = useState<Page>("dashboard");
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [saisieTab, setSaisieTab] = useState("photo");
@@ -103,9 +111,10 @@ export default function App() {
     }
   }, [authenticated, readOnly]);
 
+  // La paie est réservée au rôle paie et au comptable (lecture) : le mot de passe d'équipe ne l'ouvre pas.
   const navItems = readOnly
-    ? NAV_ITEMS.filter((item) => ["dashboard", "transactions", "rapports"].includes(item.key))
-    : NAV_ITEMS;
+    ? NAV_ITEMS.filter((item) => ["dashboard", "transactions", "rapports", "paie"].includes(item.key))
+    : NAV_ITEMS.filter((item) => item.key !== "paie" || role === "paie");
   const activePage = navItems.some((item) => item.key === page) ? page : "rapports";
 
   if (!authenticated) {
@@ -244,6 +253,7 @@ export default function App() {
         {activePage === "rapprochement" && <RapprochementComp />}
         {activePage === "recurrences" && <RecurrenceList />}
         {activePage === "rapports" && <Rapports />}
+        {activePage === "paie" && <PaieEmploye readOnly={readOnly} />}
       </main>
     </div>
   );
