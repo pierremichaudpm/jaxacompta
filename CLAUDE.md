@@ -74,7 +74,7 @@ netlify env:get NETLIFY_DATABASE_URL
 psql "$URL" -f migrations/XXX_name.sql
 ```
 
-Migrations actuelles : 001 (schema) → 017 (module paie). **017 pas encore executee en prod.** **Toutes executees sur la DB prod**, incluant 014 (`id_transfert`/`is_transfert`), 015 (compte Marge de credit BN) et 016 (`compte_destination_id`) — verifiees en prod le 2026-06-29, la chaine des transferts (miroir, suppression/edition de paire) fonctionne en prod.
+Migrations actuelles : 001 (schema) → 017 (module paie). **Toutes executees sur la DB prod** (017 le 2026-11-02 : 8 tables, Virginie Jaffredo, taux 2026, taux CNESST a 0 a saisir), incluant 014 (`id_transfert`/`is_transfert`), 015 (compte Marge de credit BN) et 016 (`compte_destination_id`) — verifiees en prod le 2026-06-29, la chaine des transferts (miroir, suppression/edition de paire) fonctionne en prod.
 
 **Derive connue** : `comptes_bancaires.solde_reel` et `date_solde_reel` (lus par `comptes.mts`) existent en prod mais ne sont crees par aucune migration.
 
